@@ -1,0 +1,17 @@
+{
+  "name": "Hábitos — Vibecode",
+  "short_name": "Hábitos",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#111827",
+  "description": "Rastreador simples de hábitos, com funcionamento offline.",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
