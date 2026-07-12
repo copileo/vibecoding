@@ -1,0 +1,10 @@
+{
+  "name": "Despesas da viagem",
+  "short_name": "Despesas",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#07101f",
+  "theme_color": "#0f172a",
+  "description": "Controle de despesas de viagem com divisão por cotas e liquidação.",
+  "icons": [{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
