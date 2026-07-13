@@ -1,4 +1,4 @@
-const CACHE='vibecode-llm-offline-v1.3.2';
+const CACHE='vibecode-llm-offline-v1.3.3';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE&&k.startsWith('vibecode-llm-offline')).map(k=>caches.delete(k)))));self.clients.claim()});
