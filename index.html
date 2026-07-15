@@ -15,7 +15,7 @@
     *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0,#27355a 0,transparent 38%),radial-gradient(circle at 100% 25%,#321a54 0,transparent 32%),var(--bg);color:var(--text);padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom)}
     main{max-width:760px;margin:0 auto;padding:34px 0 48px}.eyebrow{color:#c4b5fd;font-weight:800;text-transform:uppercase;letter-spacing:.12em;font-size:.75rem}h1{font-size:clamp(2.3rem,10vw,4rem);line-height:.95;letter-spacing:-.06em;margin:10px 0 14px}.intro{color:var(--muted);font-size:1.05rem;line-height:1.6;max-width:600px;margin:0 0 30px}
     .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}.card{display:flex;flex-direction:column;min-height:230px;padding:20px;border-radius:24px;background:rgba(18,26,45,.9);border:1px solid var(--line);box-shadow:0 22px 60px rgba(0,0,0,.24);text-decoration:none;color:inherit;backdrop-filter:blur(14px);transition:transform .18s ease,border-color .18s ease}.card:active{transform:scale(.985)}.card:hover{border-color:rgba(196,181,253,.5)}
-    .icon{width:60px;height:60px;border-radius:18px;display:grid;place-items:center;font-size:30px;background:linear-gradient(135deg,#7c3aed,#22c55e);box-shadow:0 10px 30px rgba(124,58,237,.25)}.icon.travel{background:linear-gradient(135deg,#38bdf8,#22c55e)}.icon.ai{background:linear-gradient(135deg,#8b5cf6,#34d399)}.card h2{font-size:1.45rem;margin:20px 0 8px}.card p{color:var(--muted);line-height:1.5;margin:0 0 20px}.open{margin-top:auto;font-weight:800;color:#ddd6fe}.soon{opacity:.55;pointer-events:none}.soon .icon{background:#283248}.badge{display:inline-flex;width:max-content;border:1px solid var(--line);border-radius:999px;padding:5px 9px;color:var(--muted);font-size:.75rem;margin-top:auto}
+    .icon{width:60px;height:60px;border-radius:18px;display:grid;place-items:center;font-size:30px;background:linear-gradient(135deg,#7c3aed,#22c55e);box-shadow:0 10px 30px rgba(124,58,237,.25)}.icon.travel{background:linear-gradient(135deg,#38bdf8,#22c55e)}.icon.ai{background:linear-gradient(135deg,#8b5cf6,#34d399)}.icon.cloud{background:linear-gradient(135deg,#38bdf8,#8b5cf6)}.card h2{font-size:1.45rem;margin:20px 0 8px}.card p{color:var(--muted);line-height:1.5;margin:0 0 20px}.open{margin-top:auto;font-weight:800;color:#ddd6fe}.soon{opacity:.55;pointer-events:none}.soon .icon{background:#283248}.badge{display:inline-flex;width:max-content;border:1px solid var(--line);border-radius:999px;padding:5px 9px;color:var(--muted);font-size:.75rem;margin-top:auto}
     footer{color:var(--muted);font-size:.85rem;text-align:center;margin-top:28px}
   </style>
 </head>
@@ -25,6 +25,12 @@
     <h1>Vibecode Hub</h1>
     <p class="intro">Um ponto de entrada para os miniapps criados pelo ChatGPT. Cada app pode funcionar de forma independente e ser instalado na tela inicial do iPhone.</p>
     <section class="grid" aria-label="Aplicativos disponíveis">
+      <a class="card" href="apps/cloud-ai-lab/">
+        <div class="icon cloud" aria-hidden="true">☁</div>
+        <h2>Cloud AI Lab</h2>
+        <p>Teste OpenAI e Anthropic diretamente no navegador, com chave própria e custo estimado por operação.</p>
+        <span class="open">Abrir experimento →</span>
+      </a>
       <a class="card" href="apps/llm-offline/">
         <div class="icon ai" aria-hidden="true">✦</div>
         <h2>LLM Offline</h2>
