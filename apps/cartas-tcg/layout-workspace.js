@@ -1,0 +1,24 @@
+(()=>{
+"use strict";
+const $=s=>document.querySelector(s),CARD_KEY="vibecode-cartas-tcg-template-card-v1";
+function selectedCardId(){try{return window.__getLayoutExampleData?.().cardId||""}catch{return""}}
+function tab(name){return document.querySelector(`.tab[data-v="${name}"]`)}
+function openTab(name){tab(name)?.click()}
+function sectionTitle(preview,id,title,help){if(!preview||preview.querySelector(`#${id}`))return;const h=document.createElement("header");h.id=id;h.className="layout-face-heading";h.innerHTML=`<strong>${title}</strong><small>${help}</small>`;preview.before(h)}
+function resetCard(){const id=selectedCardId();if(!id)return;localStorage.removeItem(`${CARD_KEY}:${id}`);window.renderLayoutPreview?.();const status=$("#layout-status");if(status)status.textContent="Ajustes individuais da carta restaurados."}
+function organize(){const panel=$("#layout .panel");if(!panel)return;
+  panel.querySelector("#layout-workspace-intro")?.remove();
+  const intro=document.createElement("section");intro.id="layout-workspace-intro";intro.className="layout-workspace-intro";intro.innerHTML='<h2>Prévia e enquadramento</h2><p>Use esta aba para conferir uma carta no template final e ajustar apenas a ilustração dessa carta. A estrutura visual é definida pelos SVGs; cores, selo, ícone, fundos e logo pertencem à coleção.</p><div class="layout-scope-actions"><button type="button" id="go-card-data">Editar dados da carta</button><button type="button" id="go-collection-theme">Editar tema da coleção</button></div>';
+  const selector=$("#layout-example-wrap");panel.insertBefore(intro,selector||panel.firstChild);intro.querySelector("#go-card-data").onclick=()=>openTab("cards");intro.querySelector("#go-collection-theme").onclick=()=>openTab("collections");
+  if(selector){selector.classList.add("layout-example-selector");const label=selector.firstChild;if(label?.nodeType===Node.TEXT_NODE)label.textContent="Carta para visualizar ";}
+  const front=$("#layout-front"),back=$("#layout-back");sectionTitle(front,"front-heading","Frente","Template, tema da coleção e ajuste individual da arte");sectionTitle(back,"back-heading","Verso","Fundo e logo herdados da coleção");
+  const picker=$("#picker");if(picker)picker.hidden=true;
+  const save=$("#save-layout"),reset=$("#reset-layout");if(save)save.hidden=true;if(reset)reset.hidden=true;
+  const note=$("#note");if(note)note.hidden=true;
+  let controls=$("#layout-controls");if(controls){controls.hidden=false;let footer=$("#layout-card-actions");if(!footer){footer=document.createElement("div");footer.id="layout-card-actions";footer.className="actions layout-card-actions";footer.innerHTML='<button type="button" id="reset-card-presentation">Restaurar enquadramento desta carta</button><button type="button" id="edit-collection-from-layout">Tema, fundos e logo da coleção</button>';controls.after(footer);footer.querySelector("#reset-card-presentation").onclick=resetCard;footer.querySelector("#edit-collection-from-layout").onclick=()=>openTab("collections")}}
+  const status=$("#layout-status");if(status&&!status.textContent)status.textContent="Selecione uma carta para visualizar o resultado final.";
+}
+function style(){if($("#layout-workspace-style"))return;const s=document.createElement("style");s.id="layout-workspace-style";s.textContent='.layout-workspace-intro{margin-bottom:16px;padding:14px;border:1px solid #334155;border-radius:14px;background:#0f172a}.layout-workspace-intro h2{margin:0 0 6px}.layout-workspace-intro p{margin:0 0 12px;color:#cbd5e1}.layout-scope-actions{display:flex;gap:8px;flex-wrap:wrap}.layout-example-selector{display:grid;gap:6px;margin:14px 0;font-weight:700}.layout-face-heading{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:14px 0 6px}.layout-face-heading small{color:#94a3b8;text-align:right}.layout-card-actions{margin-top:12px;flex-wrap:wrap}@media(max-width:600px){.layout-face-heading{display:block}.layout-face-heading small{display:block;text-align:left;margin-top:3px}}';document.head.append(s)}
+function install(){style();organize();document.querySelectorAll('.tab[data-v="layout"]').forEach(b=>b.addEventListener("click",()=>setTimeout(organize,80)));document.addEventListener("change",e=>{if(e.target?.id==="layout-example")setTimeout(organize,80)});const original=window.renderLayoutPreview;if(original&&!original.__workspace){const wrapped=async(...args)=>{const result=await original(...args);setTimeout(organize,0);return result};wrapped.__workspace=true;window.renderLayoutPreview=wrapped;window.renderLayout=wrapped}setTimeout(organize,500)}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
+})();
