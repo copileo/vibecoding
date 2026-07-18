@@ -1,0 +1,9 @@
+(()=>{
+"use strict";
+let generation=0;
+const $=s=>document.querySelector(s);
+function data(){try{return window.__getLayoutExampleData?.()||{}}catch{return{}}}
+async function render(){const api=window.__tcgTemplateSVG,front=$("#layout-front"),back=$("#layout-back");if(!api||!front||!back)return;const token=++generation,status=$("#layout-status");if(status)status.textContent="Carregando template SVG…";try{const d=data(),nodes=await Promise.all([api.renderFront(d),api.renderBack(d)]);if(token!==generation)return;front.replaceChildren(nodes[0]);back.replaceChildren(nodes[1]);const picker=$("#picker"),controls=$("#layout-controls"),note=$("#note");if(picker)picker.hidden=true;if(controls){controls.hidden=false;controls.innerHTML='<section class="controls"><h3>Template estruturado</h3><p>O visual principal agora vem dos arquivos <code>template-front.svg</code> e <code>template-back.svg</code>. A carta de exemplo continua selecionável; posições e decoração são editadas externamente no SVG.</p></section>'}if(note)note.textContent="Modo template · edite os SVGs externamente e recarregue o app.";if(status)status.textContent="Template SVG aplicado à carta de exemplo."}catch(error){if(status)status.textContent="Falha ao carregar o template: "+error.message;console.error(error)}}
+function install(){window.renderLayoutPreview=render;window.renderLayout=render;document.querySelectorAll('.tab[data-v="layout"]').forEach(b=>b.addEventListener("click",()=>setTimeout(render,30)));document.addEventListener("change",e=>{if(e.target?.id==="layout-example-card")setTimeout(render,0)});setTimeout(render,250)}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
+})();
