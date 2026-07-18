@@ -1,7 +1,7 @@
 const PREFIX="vibecode-cartas-tcg-";
-const CACHE=PREFIX+"v14";
-const VERSION="1.7.0";
-const ASSETS=["./","./index.html","./manifest.webmanifest","./icon.svg","./layout-fixes.js","./collection-layout.js","./svg-editor.js","./print-svg.js","./bootstrap-v150.js"];
+const CACHE=PREFIX+"v15";
+const VERSION="1.8.0";
+const ASSETS=["./","./index.html","./manifest.webmanifest","./icon.svg","./layout-fixes.js","./collection-layout.js","./svg-editor.js","./print-svg.js","./template-front.svg","./template-back.svg","./template-renderer.js","./template-mode.js","./template-print.js","./bootstrap-v150.js"];
 function injectBootstrap(text){if(text.includes("bootstrap-v150.js"))return text;return text.replace("</body>",`<script src="./bootstrap-v150.js?v=${VERSION}"></script></body>`)}
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()))});
 self.addEventListener("activate",event=>{event.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(key=>key.startsWith(PREFIX)&&key!==CACHE).map(key=>caches.delete(key)));await self.clients.claim();const clients=await self.clients.matchAll({type:"window",includeUncontrolled:true});await Promise.all(clients.map(client=>{try{const url=new URL(client.url);url.searchParams.set("appv",VERSION);return client.navigate(url.href)}catch{return Promise.resolve()}}))})())});
