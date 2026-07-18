@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="630" height="880" viewBox="0 0 630 880">
+<defs>
+<clipPath id="cardClip"><rect width="630" height="880" rx="28"/></clipPath>
+<clipPath id="artClip"><rect x="70" y="155" width="490" height="395" rx="28"/></clipPath>
+<pattern id="pattern" width="84" height="84" patternUnits="userSpaceOnUse"><g opacity=".12" fill="#8c7a54"><circle cx="20" cy="20" r="10"/><rect x="48" y="14" width="20" height="20" rx="4"/><path d="M24 58c10-14 26-14 36 0-10 10-26 10-36 0z"/></g></pattern>
+<linearGradient id="band" x2="0" y2="1"><stop stop-color="#264b33"/><stop offset="1" stop-color="#183422"/></linearGradient>
+</defs>
+<g clip-path="url(#cardClip)">
+<rect width="630" height="880" fill="#efe6d2"/><rect width="630" height="880" fill="url(#pattern)"/>
+<image id="front-bg" data-slot="frontBg" width="630" height="880" preserveAspectRatio="none" href=""/>
+<rect x="18" y="18" width="594" height="844" rx="24" fill="none" stroke="#b8a47c" stroke-width="4"/>
+<g><rect x="34" y="34" width="82" height="82" rx="18" fill="#4d9a43"/><text id="rarity" x="75" y="86" text-anchor="middle" font-family="Georgia,serif" font-size="42" font-weight="700" fill="white">SP</text></g>
+<g><circle cx="560" cy="74" r="42" fill="#fffaf0" stroke="#9c8455" stroke-width="4"/><text id="number-top" data-slot="numberTop" x="560" y="88" text-anchor="middle" font-family="Arial,sans-serif" font-size="34" font-weight="700" fill="#3a2e1f">001</text></g>
+<rect x="66" y="151" width="498" height="403" rx="32" fill="#d8cfbb"/>
+<g clip-path="url(#artClip)"><image id="art" data-slot="art" x="70" y="155" width="490" height="395" preserveAspectRatio="none" href=""/></g>
+<rect x="70" y="155" width="490" height="395" rx="28" fill="none" stroke="#b89d72" stroke-width="4"/>
+<path d="M0 690C120 650 220 640 315 650C420 662 520 675 630 710V880H0Z" fill="url(#band)"/>
+<g opacity=".12"><rect y="650" width="630" height="230" fill="url(#pattern)"/></g>
+<text id="name" data-slot="name" x="315" y="735" text-anchor="middle" font-family="Georgia,serif" font-size="58" font-weight="700" fill="white">Villager</text>
+<text id="meta-left" data-slot="metaLeft" x="80" y="770" font-family="Arial,sans-serif" font-size="24" font-weight="600" fill="#f4f0e7">Série: AC</text>
+<text id="meta-right" data-slot="metaRight" x="550" y="770" text-anchor="end" font-family="Arial,sans-serif" font-size="24" font-weight="600" fill="#f4f0e7">Habitante</text>
+<line x1="80" y1="790" x2="550" y2="790" stroke="#d9c8a2" stroke-width="2" opacity=".65"/>
+<circle cx="245" cy="820" r="26" fill="#dbe8d3"/><text id="set-icon" x="245" y="829" text-anchor="middle" font-size="24" font-weight="700" fill="#2f5b37">⌂</text>
+<text id="number-bottom" data-slot="numberBottom" x="315" y="832" text-anchor="middle" font-family="Arial,sans-serif" font-size="42" font-weight="700" fill="white">12/12</text>
+</g></svg>
