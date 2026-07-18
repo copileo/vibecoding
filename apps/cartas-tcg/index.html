@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Cartas TCG" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <title>Cartas TCG — Vibecode</title>
+  <style>
+    :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark;--bg:#080d1a;--panel:#121a2d;--field:#0f172a;--muted:#94a3b8;--text:#f8fafc;--accent:#f59e0b;--danger:#ef4444;--line:rgba(255,255,255,.1)}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 10% 0,#3a2d19 0,transparent 34%),radial-gradient(circle at 100% 25%,#31204d 0,transparent 30%),var(--bg);color:var(--text);padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
+    main{max-width:920px;margin:0 auto;padding:20px 0 48px}.back{display:inline-block;color:#fde68a;text-decoration:none;margin-bottom:16px}h1{font-size:2rem;letter-spacing:-.04em;margin:0 0 6px}.subtitle{color:var(--muted);margin:0 0 20px;line-height:1.5}
+    .tabs{display:flex;gap:8px;overflow:auto;margin-bottom:14px;padding-bottom:2px}.tab{white-space:nowrap;background:#1e293b;color:var(--text)}.tab[aria-selected="true"]{background:var(--accent);color:#1f1604}.view[hidden]{display:none}
+    .panel{background:rgba(18,26,45,.94);border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:0 20px 55px rgba(0,0,0,.25);margin-bottom:14px}.grid{display:grid;gap:13px}.fields{grid-template-columns:repeat(2,minmax(0,1fr))}.full{grid-column:1/-1}label{display:grid;gap:7px;color:#e2e8f0;font-size:.9rem;font-weight:700}input{width:100%;border:1px solid var(--line);background:var(--field);color:var(--text);padding:13px;border-radius:13px;font-size:16px;outline:none}input:focus{border-color:var(--accent)}input[type=file]{padding:10px;font-size:.85rem}
+    button{border:0;border-radius:13px;padding:12px 15px;font-size:15px;font-weight:800;color:#171006;background:var(--accent);cursor:pointer;min-height:44px}.secondary{background:#263247;color:var(--text)}.danger{background:transparent;color:#fca5a5;border:1px solid rgba(239,68,68,.3)}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.status{min-height:22px;color:#bfdbfe;font-size:.9rem;margin-top:10px}
+    .preview-wrap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card-preview,.print-card{position:relative;aspect-ratio:63/88;border-radius:4.5%;overflow:hidden;background:linear-gradient(145deg,#18243a,#07101f);border:1px solid rgba(255,255,255,.18);box-shadow:0 16px 35px rgba(0,0,0,.3)}.card-preview img,.print-card img{display:block}.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.art{position:absolute;left:7%;top:16%;width:86%;height:58%;object-fit:cover;border-radius:3%;background:#111827}.logo{position:absolute;right:5%;top:4%;max-width:25%;max-height:9%;object-fit:contain}.card-name{position:absolute;left:6%;right:32%;top:5%;font-size:clamp(.66rem,3.5vw,1.05rem);font-weight:900;text-shadow:0 1px 3px #000}.card-meta{position:absolute;left:6%;right:6%;bottom:5%;display:flex;justify-content:space-between;gap:6px;font-size:clamp(.5rem,2.5vw,.78rem);font-weight:800;text-shadow:0 1px 3px #000}.back-mark{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:12%;font-weight:900;font-size:1.1rem;text-shadow:0 2px 5px #000}.preview-label{text-align:center;color:var(--muted);font-size:.8rem;margin-top:7px}
+    .cards{display:grid;gap:10px}.saved{display:grid;grid-template-columns:58px 1fr auto;align-items:center;gap:12px;background:var(--field);padding:10px;border-radius:16px}.thumb{width:58px;aspect-ratio:63/88;object-fit:cover;border-radius:6px;background:#1e293b}.saved strong{display:block}.saved small{color:var(--muted)}.empty{text-align:center;color:var(--muted);padding:24px}.print-help{color:var(--muted);line-height:1.55}.qty{width:72px}.saved-actions{display:flex;align-items:center;gap:7px}.version{text-align:center;color:var(--muted);font-size:.82rem;margin-top:18px}
+    #print-sheet{display:none}
+    @media(max-width:620px){.fields,.preview-wrap{grid-template-columns:1fr}.saved{grid-template-columns:50px 1fr}.saved-actions{grid-column:1/-1;justify-content:flex-end}.thumb{width:50px}}
+    @page{size:A4 portrait;margin:12mm}
+    @media print{body{background:white!important;padding:0;color:black}main{display:none!important}#print-sheet{display:grid!important;grid-template-columns:repeat(3,63mm);grid-auto-rows:88mm;gap:4mm;width:197mm;margin:0}.print-card{width:63mm;height:88mm;aspect-ratio:auto;border-radius:2.5mm;box-shadow:none;border:.2mm solid #777;break-inside:avoid;color:white}.print-card .card-name{font-size:3.5mm}.print-card .card-meta{font-size:2.5mm}}
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="../../">← Hub</a>
+    <h1>Cartas TCG</h1>
+    <p class="subtitle">Crie cartas no formato 63 × 88 mm, salve tudo neste aparelho e prepare folhas A4 para impressão caseira.</p>
+    <nav class="tabs" aria-label="Seções">
+      <button class="tab" data-view="editor" aria-selected="true">Nova carta</button>
+      <button class="tab" data-view="colecao" aria-selected="false">Minhas cartas</button>
+      <button class="tab" data-view="impressao" aria-selected="false">Imprimir</button>
+    </nav>
+
+    <section id="editor" class="view">
+      <form id="card-form" class="panel">
+        <div class="grid fields">
+          <label>Nome<input id="nome" maxlength="70" required placeholder="Nome da carta" /></label>
+          <label>Franquia<input id="franquia" maxlength="60" placeholder="Ex.: Minha franquia" /></label>
+          <label>Coleção<input id="colecao" maxlength="60" placeholder="Ex.: Série inicial" /></label>
+          <label>Número<input id="numero" inputmode="numeric" maxlength="8" placeholder="Ex.: 15" /></label>
+          <label>Total da coleção (opcional)<input id="total" inputmode="numeric" maxlength="8" placeholder="Ex.: 120" /></label>
+          <label>Ilustração<input id="ilustracao" type="file" accept="image/*" /></label>
+          <label>Logo da franquia<input id="logo" type="file" accept="image/*" /></label>
+          <label>Fundo frontal<input id="fundo-frontal" type="file" accept="image/*" /></label>
+          <label>Fundo traseiro<input id="fundo-traseiro" type="file" accept="image/*" /></label>
+        </div>
+        <div class="actions"><button type="submit">Salvar carta</button><button type="button" class="secondary" id="limpar">Limpar</button></div>
+        <div id="status" class="status" role="status"></div>
+      </form>
+      <section class="panel">
+        <div class="preview-wrap">
+          <div><div id="front-preview" class="card-preview"></div><div class="preview-label">Frente</div></div>
+          <div><div id="back-preview" class="card-preview"></div><div class="preview-label">Verso</div></div>
+        </div>
+      </section>
+    </section>
+
+    <section id="colecao" class="view" hidden><div class="panel"><div id="card-list" class="cards"></div><div id="empty" class="empty">Nenhuma carta salva ainda.</div></div></section>
+    <section id="impressao" class="view" hidden>
+      <div class="panel"><p class="print-help">Defina as cópias em “Minhas cartas” e imprima em A4, escala 100%. Desative “Ajustar à página”. No iPhone, a tela de impressão permite ampliar a prévia e compartilhar como PDF.</p><div class="actions"><button id="print-front">Imprimir frentes</button><button id="print-back" class="secondary">Imprimir versos</button></div><div id="print-status" class="status" role="status"></div></div>
+    </section>
+    <footer class="version" id="version"></footer>
+  </main>
+  <section id="print-sheet" aria-hidden="true"></section>
+<script>
+const APP_VERSION="1.0.0",DB_NAME="vibecode-cartas-tcg-v1",STORE="cards";
+const $=s=>document.querySelector(s), form=$("#card-form"), statusEl=$("#status"), printSheet=$("#print-sheet");
+let db,cards=[],urls=[];
+function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now()+Math.random().toString(16).slice(2)}
+function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE,{keyPath:"id"})};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+function tx(mode="readonly"){return db.transaction(STORE,mode).objectStore(STORE)}
+function getAll(){return new Promise((resolve,reject)=>{const r=tx().getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+function put(card){return new Promise((resolve,reject)=>{const r=tx("readwrite").put(card);r.onsuccess=resolve;r.onerror=()=>reject(r.error)})}
+function remove(id){return new Promise((resolve,reject)=>{const r=tx("readwrite").delete(id);r.onsuccess=resolve;r.onerror=()=>reject(r.error)})}
+function file(id){return $(id).files[0]||null}function objectURL(blob){if(!blob)return"";const url=URL.createObjectURL(blob);urls.push(url);return url}function clearURLs(){urls.forEach(URL.revokeObjectURL);urls=[]}
+function text(tag,cls,value){const el=document.createElement(tag);el.className=cls;el.textContent=value;return el}
+function buildCard(card,side="front",print=false){const root=document.createElement("article");root.className=print?"print-card":"card-preview";const bg=side==="front"?card.fundoFrontal:card.fundoTraseiro;if(bg){const img=new Image();img.className="bg";img.src=objectURL(bg);root.append(img)}if(side==="front"){if(card.ilustracao){const img=new Image();img.className="art";img.src=objectURL(card.ilustracao);root.append(img)}if(card.logo){const logo=new Image();logo.className="logo";logo.src=objectURL(card.logo);root.append(logo)}root.append(text("div","card-name",card.nome||"Nome da carta"));const meta=document.createElement("div");meta.className="card-meta";meta.append(text("span","",card.colecao||card.franquia||"Coleção"),text("span","",card.numero?(card.total?`${card.numero}/${card.total}`:card.numero):"—"));root.append(meta)}else{root.append(text("div","back-mark",card.franquia||"TCG"))}return root}
+function preview(){clearURLs();const card={nome:$("#nome").value,franquia:$("#franquia").value,colecao:$("#colecao").value,numero:$("#numero").value,total:$("#total").value,ilustracao:file("#ilustracao"),logo:file("#logo"),fundoFrontal:file("#fundo-frontal"),fundoTraseiro:file("#fundo-traseiro")};$("#front-preview").replaceWith(buildCard(card,"front"));$("#front-preview").id="front-preview";$("#back-preview").replaceWith(buildCard(card,"back"));$("#back-preview").id="back-preview"}
+async function refresh(){clearURLs();cards=(await getAll()).sort((a,b)=>(a.colecao||"").localeCompare(b.colecao||"")||Number(a.numero||0)-Number(b.numero||0));const list=$("#card-list");list.textContent="";cards.forEach(card=>{const row=document.createElement("div");row.className="saved";const thumb=card.ilustracao?new Image():document.createElement("div");thumb.className="thumb";if(card.ilustracao)thumb.src=objectURL(card.ilustracao);const info=document.createElement("div");info.append(text("strong","",card.nome),text("small","",`${card.colecao||"Sem coleção"} · ${card.numero||"—"}${card.total?"/"+card.total:""}`));const controls=document.createElement("div");controls.className="saved-actions";const qty=document.createElement("input");qty.className="qty";qty.type="number";qty.min="0";qty.max="99";qty.value=card.copias??1;qty.setAttribute("aria-label",`Cópias de ${card.nome}`);qty.addEventListener("change",async()=>{card.copias=Math.max(0,Math.min(99,Number(qty.value)||0));await put(card)});const del=document.createElement("button");del.className="danger";del.type="button";del.textContent="Excluir";del.onclick=async()=>{if(confirm(`Excluir “${card.nome}”?`)){await remove(card.id);await refresh()}};controls.append(qty,del);row.append(thumb,info,controls);list.append(row)});$("#empty").hidden=cards.length>0}
+form.addEventListener("input",preview);form.addEventListener("change",preview);form.addEventListener("submit",async e=>{e.preventDefault();try{const card={id:uid(),nome:$("#nome").value.trim(),franquia:$("#franquia").value.trim(),colecao:$("#colecao").value.trim(),numero:$("#numero").value.trim(),total:$("#total").value.trim(),ilustracao:file("#ilustracao"),logo:file("#logo"),fundoFrontal:file("#fundo-frontal"),fundoTraseiro:file("#fundo-traseiro"),copias:1,createdAt:Date.now()};if(!card.nome)throw new Error("Informe o nome da carta.");await put(card);statusEl.textContent="Carta salva neste aparelho.";form.reset();preview();await refresh()}catch(err){statusEl.textContent=err.message||"Não foi possível salvar a carta."}});$("#limpar").onclick=()=>{form.reset();statusEl.textContent="";preview()};
+function preparePrint(side){clearURLs();printSheet.textContent="";let count=0;cards.forEach(card=>{for(let i=0;i<(card.copias??1);i++){printSheet.append(buildCard(card,side,true));count++}});if(!count){$("#print-status").textContent="Defina ao menos uma cópia nas cartas salvas.";return}$("#print-status").textContent=`${count} carta(s) preparada(s).`;setTimeout(()=>window.print(),80)}
+$("#print-front").onclick=()=>preparePrint("front");$("#print-back").onclick=()=>preparePrint("back");document.querySelectorAll(".tab").forEach(tab=>tab.onclick=()=>{document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t===tab)));document.querySelectorAll(".view").forEach(v=>v.hidden=v.id!==tab.dataset.view)});
+$("#version").textContent=`Cartas TCG · v${APP_VERSION} · dados salvos localmente`;
+(async()=>{try{db=await openDB();await refresh();preview()}catch(err){statusEl.textContent="O armazenamento local não pôde ser aberto."}})();
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+</script>
+</body>
+</html>
