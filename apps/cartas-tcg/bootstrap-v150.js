@@ -1,8 +1,8 @@
 (()=>{
 "use strict";
-const VERSION="1.7.0";
-const loadScript=src=>new Promise((resolve,reject)=>{if(document.querySelector(`script[src="${src}"]`))return resolve();const s=document.createElement("script");s.src=src;s.defer=true;s.onload=resolve;s.onerror=reject;document.head.appendChild(s)});
-const updateVersion=()=>{const footer=document.querySelector("#ver");if(footer)footer.textContent=`Cartas TCG · v${VERSION} · impressão SVG`;document.documentElement.dataset.appVersion=VERSION};
-const boot=async()=>{updateVersion();try{await loadScript("./layout-fixes.js?v=1.7.0");await loadScript("./collection-layout.js?v=1.7.0");await loadScript("./svg-editor.js?v=1.7.0");await loadScript("./print-svg.js?v=1.7.0");updateVersion()}catch(error){const status=document.querySelector("#layout-status")||document.querySelector("#ps")||document.querySelector("#cs");if(status)status.textContent="Não foi possível carregar a versão 1.7.0: "+error.message}};
+const VERSION="1.8.0";
+const loadScript=src=>new Promise((resolve,reject)=>{const clean=src.split("?")[0];if([...document.scripts].some(s=>s.getAttribute("src")?.split("?")[0]===clean))return resolve();const s=document.createElement("script");s.src=src;s.defer=true;s.onload=resolve;s.onerror=()=>reject(new Error(`Falha ao carregar ${src}`));document.head.appendChild(s)});
+const updateVersion=()=>{const footer=document.querySelector("#ver");if(footer)footer.textContent=`Cartas TCG · v${VERSION} · template SVG`;document.documentElement.dataset.appVersion=VERSION};
+const boot=async()=>{updateVersion();try{for(const src of["./layout-fixes.js","./collection-layout.js","./template-renderer.js","./svg-editor.js","./print-svg.js","./template-mode.js","./template-print.js"])await loadScript(`${src}?v=${VERSION}`);updateVersion()}catch(error){const status=document.querySelector("#layout-status")||document.querySelector("#ps")||document.querySelector("#cs");if(status)status.textContent=`Não foi possível carregar a versão ${VERSION}: ${error.message}`;console.error(error)}};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 })();
