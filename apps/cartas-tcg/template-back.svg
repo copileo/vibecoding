@@ -3,14 +3,14 @@
 <clipPath id="cardClip"><rect width="630" height="880" rx="28"/></clipPath>
 <clipPath id="logoClip"><rect x="150" y="42" width="330" height="120" rx="16"/></clipPath>
 <pattern id="pattern" width="84" height="84" patternUnits="userSpaceOnUse"><g opacity=".1" fill="#8c7a54"><circle cx="20" cy="20" r="10"/><rect x="48" y="14" width="20" height="20" rx="4"/><path d="M24 58c10-14 26-14 36 0-10 10-26 10-36 0z"/></g></pattern>
-<linearGradient id="band" x2="0" y2="1"><stop stop-color="#264b33"/><stop offset="1" stop-color="#183422"/></linearGradient>
+<linearGradient id="back-band-gradient" x2="0" y2="1"><stop stop-color="#264b33"/><stop offset="1" stop-color="#183422"/></linearGradient>
 </defs>
 <g clip-path="url(#cardClip)">
 <rect width="630" height="880" fill="#efe6d2"/><rect width="630" height="880" fill="url(#pattern)"/>
 <image id="back-bg" data-slot="backBg" width="630" height="880" preserveAspectRatio="none" href=""/>
 <rect x="18" y="18" width="594" height="844" rx="24" fill="none" stroke="#b8a47c" stroke-width="4"/>
 <g clip-path="url(#logoClip)"><image id="back-logo" data-slot="backLogo" x="150" y="42" width="330" height="120" preserveAspectRatio="none" href=""/></g>
-<path d="M0 720C120 675 220 660 315 670C420 680 520 700 630 735V880H0Z" fill="url(#band)"/>
+<path id="back-bottom-band" d="M0 720C120 675 220 660 315 670C420 680 520 700 630 735V880H0Z" fill="url(#back-band-gradient)"/>
 <g opacity=".12"><rect y="680" width="630" height="200" fill="url(#pattern)"/></g>
 <text id="back-text" data-slot="backText" x="315" y="795" text-anchor="middle" font-family="Georgia,serif" font-size="48" font-weight="700" fill="white">Animal Village</text>
 </g></svg>
