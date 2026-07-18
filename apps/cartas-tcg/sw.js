@@ -1,6 +1,6 @@
 const PREFIX="vibecode-cartas-tcg-";
-const CACHE=PREFIX+"v11";
-const VERSION="1.6.0";
+const CACHE=PREFIX+"v12";
+const VERSION="1.6.1";
 const ASSETS=["./","./index.html","./manifest.webmanifest","./icon.svg","./layout-fixes.js","./collection-layout.js","./svg-editor.js","./bootstrap-v150.js"];
 function injectBootstrap(text){if(text.includes("bootstrap-v150.js"))return text;return text.replace("</body>",`<script src="./bootstrap-v150.js?v=${VERSION}"></script></body>`)}
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()))});
