@@ -1,0 +1,18 @@
+{
+  "name": "Cartas TCG — Vibecode",
+  "short_name": "Cartas TCG",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#080d1a",
+  "theme_color": "#111827",
+  "description": "Editor local de cartas TCG e diagramação A4 para impressão caseira.",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
