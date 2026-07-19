@@ -1,0 +1,1 @@
+window.TCGPrint=(()=>{function pages(nodes){const root=document.querySelector('#print-root');root.replaceChildren();for(let i=0;i<nodes.length;i+=9){const p=document.createElement('section');p.className='print-page';nodes.slice(i,i+9).forEach(n=>p.append(n));root.append(p)}}return{pages}})();
