@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#173f2a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Cartas TCG 2">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="app.css">
+  <title>Cartas TCG 2</title>
+</head>
+<body>
+<main>
+  <header class="topbar"><a href="../../">← Hub</a><span class="version" id="version"></span></header>
+  <section class="hero"><p class="eyebrow">Template-first</p><h1>Cartas TCG 2</h1><p>Crie os dados; o template cuida do design.</p></section>
+  <nav class="tabs" aria-label="Seções">
+    <button data-tab="cards" aria-selected="true">Cartas</button>
+    <button data-tab="collections">Coleções</button>
+    <button data-tab="franchises">Franquias</button>
+    <button data-tab="adjust">Ajustes</button>
+    <button data-tab="print">Imprimir</button>
+  </nav>
+
+  <section id="cards" class="view">
+    <article class="panel">
+      <h2>Nova carta</h2>
+      <form id="card-form" class="form-grid">
+        <label>Nome<input id="card-name" required maxlength="80"></label>
+        <label>Coleção<select id="card-collection" required></select></label>
+        <label>Número<input id="card-number" inputmode="numeric" placeholder="1"></label>
+        <label>Ilustração<input id="card-art" type="file" accept="image/*" required></label>
+        <button class="primary" type="submit">Salvar carta</button>
+      </form>
+      <p class="status" id="card-status"></p>
+    </article>
+    <article class="panel"><h2>Cartas salvas</h2><div id="card-list" class="list"></div></article>
+  </section>
+
+  <section id="collections" class="view" hidden>
+    <article class="panel">
+      <h2>Nova coleção</h2>
+      <form id="collection-form" class="form-grid">
+        <label>Nome<input id="collection-name" required></label>
+        <label>Franquia<select id="collection-franchise" required></select></label>
+        <label>Total de cartas<input id="collection-total" inputmode="numeric" placeholder="Opcional"></label>
+        <label>Texto do selo<input id="collection-badge" value="SP" maxlength="8"></label>
+        <label>Cor principal<input id="collection-primary" type="color" value="#376f3c"></label>
+        <label>Cor secundária<input id="collection-secondary" type="color" value="#123d24"></label>
+        <label>Ícone da coleção<input id="collection-icon" type="file" accept="image/*"></label>
+        <label>Fundo frontal<input id="collection-front" type="file" accept="image/*"></label>
+        <label>Fundo traseiro<input id="collection-back" type="file" accept="image/*"></label>
+        <button class="primary" type="submit">Salvar coleção</button>
+      </form>
+      <p class="status" id="collection-status"></p>
+    </article>
+    <article class="panel"><h2>Coleções</h2><div id="collection-list" class="list"></div></article>
+  </section>
+
+  <section id="franchises" class="view" hidden>
+    <article class="panel">
+      <h2>Nova franquia</h2>
+      <form id="franchise-form" class="form-grid">
+        <label>Nome<input id="franchise-name" required></label>
+        <label>Logo<input id="franchise-logo" type="file" accept="image/*"></label>
+        <button class="primary" type="submit">Salvar franquia</button>
+      </form>
+      <p class="status" id="franchise-status"></p>
+    </article>
+    <article class="panel"><h2>Franquias</h2><div id="franchise-list" class="list"></div></article>
+  </section>
+
+  <section id="adjust" class="view" hidden>
+    <article class="panel">
+      <h2>Ajustes da carta</h2>
+      <label>Carta<select id="adjust-card"></select></label>
+      <div class="preview-pair"><div><div id="adjust-front" class="card-preview"></div><small>Frente</small></div><div><div id="adjust-back" class="card-preview"></div><small>Verso</small></div></div>
+      <div class="controls">
+        <label>Modo<select id="art-fit"><option value="cover">Preencher / recortar</option><option value="contain">Conter inteira</option><option value="fill">Esticar</option></select></label>
+        <label>Enquadramento X<input id="art-x" type="range" min="0" max="100" value="50"></label>
+        <label>Enquadramento Y<input id="art-y" type="range" min="0" max="100" value="50"></label>
+        <label>Zoom<input id="art-zoom" type="range" min="50" max="250" value="100"></label>
+        <label class="check"><input id="show-top" type="checkbox" checked> Mostrar número superior</label>
+        <button id="save-adjust" class="primary" type="button">Salvar ajustes</button>
+      </div>
+      <p class="status" id="adjust-status"></p>
+    </article>
+  </section>
+
+  <section id="print" class="view" hidden>
+    <article class="panel">
+      <h2>Impressão A4</h2>
+      <p class="muted">Até 9 cartas por página, 63 × 88 mm.</p>
+      <div id="print-list" class="list"></div>
+      <div class="actions"><button id="prepare-front" class="primary">Preparar frentes</button><button id="prepare-back">Preparar versos</button><button id="open-print" hidden>Imprimir</button></div>
+      <p class="status" id="print-status"></p>
+      <div id="print-preview" class="sheet-preview" hidden></div>
+    </article>
+  </section>
+</main>
+<section id="print-root"></section>
+<script src="db.js"></script><script src="renderer.js"></script><script src="print.js"></script><script src="app.js"></script>
+</body></html>
