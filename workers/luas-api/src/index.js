@@ -5,7 +5,8 @@ const CACHE_SECONDS=20;
 const STOPS={
  tpt:['The Point','8220GA00437','8220GA00436'],sdk:['Spencer Dock','8220GA00433','8220GA00434'],msq:['Mayor Square - NCI','8220GA00431','8220GA00430'],gdk:["George's Dock",'8220GA00427','8220GA00428'],con:['Connolly','8220GA00424','8220GA00423'],bus:['Busáras','8220GA00421','8220GA00420'],abb:['Abbey Street','8220GA00409','8220GA00408'],jer:['Jervis','8220GA00404','8220GA00405'],fou:['Four Courts','8220GA00401','8220GA00402'],smi:['Smithfield','8220GA00398','8220GA00399'],mus:['Museum','8220GA00389','8220GA00390'],heu:['Heuston','8220GA00386','8220GA00387'],jam:["James's",'8220GA00381','8220GA00382'],fat:['Fatima','8220GA00379','8220GA00378'],ria:['Rialto','8220GA00376','8220GA00375'],sui:['Suir Road','8220GA00372','8220GA00373'],gol:['Goldenbridge','8220GA00369','8220GA00370'],dri:['Drimnagh','8220GA00367','8220GA00366'],bla:['Blackhorse','8220GA00364','8220GA00363'],blu:['Bluebell','8220GA00361','8220GA00360'],kyl:['Kylemore','8220GA00356','8220GA00357'],red:['Red Cow','8230GA00354','8230GA00353'],kin:['Kingswood','8230GA00350','8230GA00351'],bel:['Belgard','8230GA00347','8230GA00348'],coo:['Cookstown','8230GA00338','8230GA00339'],hos:['Hospital','8230GA00341','8230GA00342'],tal:['Tallaght','8230GA00344','8230GA00345'],fet:['Fettercairn','8230GA00392','8230GA00393'],che:['Cheeverstown','8230GA00396','8230GA00395'],cit:['Citywest Campus','8230GA00413','8230GA00412'],for:['Fortunestown','8230GA00416','8230GA00415'],sag:['Saggart','8230GA00418','8230GA00419'],bro:['Broombridge','8220GA00459','8220GA00460'],cab:['Cabra','8220GA00480','8220GA00469'],phi:['Phibsborough','8220GA00455','8220GA00456'],gra:['Grangegorman','8220GA00479','8220GA00452'],brd:['Broadstone - University','8220GA00468','8220GA00481'],dom:['Dominick','8220GA00467','8220GA00478'],par:['Parnell','8220GA00471'],ocu:["O'Connell - Upper",'8220GA00470'],ocg:["O'Connell - GPO",'8220GA00444'],mar:['Marlborough','8220GA00034'],wes:['Westmoreland','8220GA00443'],tri:['Trinity','8220GA00035'],daw:['Dawson','8220GA00031','8220GA00441'],sti:["St. Stephen's Green",'8220GA00058','8220GA00059'],har:['Harcourt','8220GA00440','8220GA00062'],cha:['Charlemont','8220GA00071','8220GA00070'],ran:['Ranelagh','8220GA00074','8220GA00075'],bee:['Beechwood','8220GA00083','8220GA00084'],cow:['Cowper','8220GA00275','8220GA00276'],mil:['Milltown','8220GA00279','8220GA00278'],win:['Windy Arbour','8250GA00281','8250GA00282'],dun:['Dundrum','8250GA00286','8250GA00287'],bal:['Balally','8250GA00291','8250GA00292'],kil:['Kilmacud','8250GA00296','8250GA00295'],sti2:['Stillorgan','8250GA00297','8250GA00298'],san:['Sandyford','8250GA00293','8250GA00294'],cen:['Central Park','8250GA00310','8250GA00311'],gln:['Glencairn','8250GA00313','8250GA00314'],gal:['The Gallops','8250GA00316','8250GA00317'],leo:['Leopardstown Valley','8250GA00319','8250GA00320'],bal2:['Ballyogan Wood','8250GA00323','8250GA00322'],car:['Carrickmines','8250GA00326','8250GA00325'],lau:['Laughanstown','8250GA00329','8250GA00330'],che2:['Cherrywood','8250GA00333','8250GA00332'],bri:['Brides Glen','8250GA00335','8250GA00336']
 };
-const STOP_NAME_BY_ID=Object.fromEntries(Object.values(STOPS).flatMap(([name,...ids])=>ids.map(id=>[normaliseStopId(id),name])));
+const STOP_CODES={tpt:['998070'],sdk:['998069'],msq:['998068'],gdk:['998067','998167'],con:['998023','998123'],bus:['998022','998122'],abb:['998021'],jer:['998020'],fou:['998019'],smi:['998018'],mus:['998017'],heu:['998016','998116'],jam:['998015'],fat:['998014'],ria:['998013'],sui:['998012','998112'],gol:['998011'],dri:['998010'],bla:['998009'],blu:['998008'],kyl:['998007'],red:['998006','998106'],kin:['998005'],bel:['998004'],coo:['998003'],hos:['998002'],tal:['998001'],fet:['998073'],che:['998074'],cit:['998075'],for:['998076'],sag:['998077'],bro:['998090'],cab:['998089'],phi:['998088'],gra:['998087'],brd:['998086'],dom:['998085'],par:['998084'],ocu:['998081'],ocg:['998080'],mar:['998083'],wes:['998079'],tri:['998082'],daw:['998078'],sti:['998024'],har:['998025'],cha:['998026','998126'],ran:['998027'],bee:['998028'],cow:['998029'],mil:['998030'],win:['998031'],dun:['998032','998132'],bal:['998033'],kil:['998034'],sti2:['998035'],san:['998036','998136'],cen:['998053'],gln:['998054'],gal:['998055'],leo:['998056'],bal2:['998057'],car:['998059'],lau:['998061'],che2:['998062'],bri:['998063']};
+const STOP_NAME_BY_ID=Object.fromEntries(Object.entries(STOPS).flatMap(([code,[name,...ids]])=>[...ids,...(STOP_CODES[code]||[])].map(id=>[normaliseStopId(id),name])));
 
 export default {async fetch(request,env,ctx){
  const url=new URL(request.url);
@@ -41,7 +42,8 @@ async function getFeed(key,ctx){
 }
 
 function buildForecast(code,[name,...stopIds],feed){
- const now=Math.floor(Date.now()/1000);const departures=[];let tripUpdates=0;let stopUpdates=0;
+ const expectedIds=[...stopIds,...(STOP_CODES[code]||[])];
+ const now=Math.floor(Date.now()/1000);const departures=[];let tripUpdates=0;let stopUpdates=0;const sampleStopIds=[];
  for(const entity of feed.entity){
   const update=entity.tripUpdate||entity.trip_update||entity.TripUpdate;if(!update)continue;tripUpdates++;
   const trip=update.trip||update.Trip||{};const routeId=String(trip.routeId||trip.route_id||trip.RouteId||'');
@@ -50,7 +52,8 @@ function buildForecast(code,[name,...stopIds],feed){
   for(const item of items){
    stopUpdates++;
    const rawStopId=item.stopId??item.stop_id??item.StopId??'';
-   if(!matchesAnyStop(rawStopId,stopIds))continue;
+   if(sampleStopIds.length<20&&rawStopId&&!sampleStopIds.includes(String(rawStopId)))sampleStopIds.push(String(rawStopId));
+   if(!matchesAnyStop(rawStopId,expectedIds))continue;
    const event=item.departure||item.Departure||item.arrival||item.Arrival||{};const timestamp=toSeconds(event.time??event.Time);
    if(!timestamp||timestamp<now-60||timestamp>now+10800)continue;
    const directionId=Number(trip.directionId??trip.direction_id??trip.DirectionId);
@@ -58,7 +61,7 @@ function buildForecast(code,[name,...stopIds],feed){
   }
  }
  departures.sort((a,b)=>a.scheduledAt.localeCompare(b.scheduledAt));
- return {apiVersion:1,provider:'nta-gtfs-realtime',stop:{code,name,ids:stopIds},updated:new Date().toISOString(),message:'Official NTA GTFS-Realtime forecast',departures:dedupe(departures).slice(0,12),diagnostics:{entities:feed.entity.length,tripUpdates,stopUpdates,matches:departures.length}};
+ return {apiVersion:1,provider:'nta-gtfs-realtime',stop:{code,name,ids:stopIds,codes:STOP_CODES[code]||[]},updated:new Date().toISOString(),message:'Official NTA GTFS-Realtime forecast',departures:dedupe(departures).slice(0,12),diagnostics:{entities:feed.entity.length,tripUpdates,stopUpdates,matches:departures.length,sampleStopIds}};
 }
 
 function normaliseStopId(value){return String(value??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');}
