@@ -2,8 +2,12 @@ import {LUAS_HEADSIGNS,LUAS_ROUTES,LUAS_SCHEDULE_ROWS} from './luas-schedule.js'
 
 const ALLOWED_ORIGIN='https://copileo.github.io';
 const NTA_URL='https://api.nationaltransport.ie/gtfsr/v2/TripUpdates?format=json';
-const CACHE_SECONDS=20;
-const WORKER_VERSION='1.7.5';
+const FRESH_SECONDS=60;
+const STALE_SECONDS=900;
+const UPSTREAM_TIMEOUT_MS=10000;
+const WORKER_VERSION='1.7.6';
+const FEED_CACHE_KEY=new Request('https://cache.vibecode.invalid/nta-trip-updates-v2');
+let feedRefreshPromise=null;
 
 const STOPS={
  tpt:['The Point','8220GA00437','8220GA00436'],sdk:['Spencer Dock','8220GA00433','8220GA00434'],msq:['Mayor Square - NCI','8220GA00431','8220GA00430'],gdk:["George's Dock",'8220GA00427','8220GA00428'],con:['Connolly','8220GA00424','8220GA00423'],bus:['Busáras','8220GA00421','8220GA00420'],abb:['Abbey Street','8220GA00409','8220GA00408'],jer:['Jervis','8220GA00404','8220GA00405'],fou:['Four Courts','8220GA00401','8220GA00402'],smi:['Smithfield','8220GA00398','8220GA00399'],mus:['Museum','8220GA00389','8220GA00390'],heu:['Heuston','8220GA00386','8220GA00387'],jam:["James's",'8220GA00381','8220GA00382'],fat:['Fatima','8220GA00379','8220GA00378'],ria:['Rialto','8220GA00376','8220GA00375'],sui:['Suir Road','8220GA00372','8220GA00373'],gol:['Goldenbridge','8220GA00369','8220GA00370'],dri:['Drimnagh','8220GA00367','8220GA00366'],bla:['Blackhorse','8220GA00364','8220GA00363'],blu:['Bluebell','8220GA00361','8220GA00360'],kyl:['Kylemore','8220GA00356','8220GA00357'],red:['Red Cow','8230GA00354','8230GA00353'],kin:['Kingswood','8230GA00350','8230GA00351'],bel:['Belgard','8230GA00347','8230GA00348'],coo:['Cookstown','8230GA00338','8230GA00339'],hos:['Hospital','8230GA00341','8230GA00342'],tal:['Tallaght','8230GA00344','8230GA00345'],fet:['Fettercairn','8230GA00392','8230GA00393'],che:['Cheeverstown','8230GA00396','8230GA00395'],cit:['Citywest Campus','8230GA00413','8230GA00412'],for:['Fortunestown','8230GA00416','8230GA00415'],sag:['Saggart','8230GA00418','8230GA00419'],bro:['Broombridge','8220GA00459','8220GA00460'],cab:['Cabra','8220GA00480','8220GA00469'],phi:['Phibsborough','8220GA00455','8220GA00456'],gra:['Grangegorman','8220GA00479','8220GA00452'],brd:['Broadstone - University','8220GA00468','8220GA00481'],dom:['Dominick','8220GA00467','8220GA00478'],par:['Parnell','8220GA00471'],ocu:["O'Connell - Upper",'8220GA00470'],ocg:["O'Connell - GPO",'8220GA00444'],mar:['Marlborough','8220GA00034'],wes:['Westmoreland','8220GA00443'],tri:['Trinity','8220GA00035'],daw:['Dawson','8220GA00031','8220GA00441'],sti:["St. Stephen's Green",'8220GA00058','8220GA00059'],har:['Harcourt','8220GA00440','8220GA00062'],cha:['Charlemont','8220GA00071','8220GA00070'],ran:['Ranelagh','8220GA00074','8220GA00075'],bee:['Beechwood','8220GA00083','8220GA00084'],cow:['Cowper','8220GA00275','8220GA00276'],mil:['Milltown','8220GA00279','8220GA00278'],win:['Windy Arbour','8250GA00281','8250GA00282'],dun:['Dundrum','8250GA00286','8250GA00287'],bal:['Balally','8250GA00291','8250GA00292'],kil:['Kilmacud','8250GA00296','8250GA00295'],sti2:['Stillorgan','8250GA00297','8250GA00298'],san:['Sandyford','8250GA00293','8250GA00294'],cen:['Central Park','8250GA00310','8250GA00311'],gln:['Glencairn','8250GA00313','8250GA00314'],gal:['The Gallops','8250GA00316','8250GA00317'],leo:['Leopardstown Valley','8250GA00319','8250GA00320'],bal2:['Ballyogan Wood','8250GA00323','8250GA00322'],car:['Carrickmines','8250GA00326','8250GA00325'],lau:['Laughanstown','8250GA00329','8250GA00330'],che2:['Cherrywood','8250GA00333','8250GA00332'],bri:['Brides Glen','8250GA00335','8250GA00336']
@@ -22,7 +26,7 @@ export default {async fetch(request,env,ctx){
  const url=new URL(request.url);
  if(request.method==='OPTIONS')return new Response(null,{status:204,headers:corsHeaders()});
  if(request.method!=='GET')return json({error:'Method not allowed.',workerVersion:WORKER_VERSION},405);
- if(url.pathname==='/health')return json({ok:true,service:'vibecode-luas-api',provider:'nta-gtfs-realtime',apiVersion:1,workerVersion:WORKER_VERSION,upstream:NTA_URL,scheduleRows:LUAS_SCHEDULE_ROWS.length});
+ if(url.pathname==='/health')return json({ok:true,service:'vibecode-luas-api',provider:'nta-gtfs-realtime',apiVersion:1,workerVersion:WORKER_VERSION,upstream:NTA_URL,scheduleRows:LUAS_SCHEDULE_ROWS.length,cache:{freshSeconds:FRESH_SECONDS,staleSeconds:STALE_SECONDS}});
  if(!env.NTA_SUBSCRIPTION_KEY)return json({error:'NTA API key is not configured.',workerVersion:WORKER_VERSION},500);
  try{
   const feed=await getFeed(env.NTA_SUBSCRIPTION_KEY,ctx);
@@ -31,25 +35,64 @@ export default {async fetch(request,env,ctx){
   const code=(url.searchParams.get('stop')||'').toLowerCase();
   const stop=STOPS[code];
   if(!stop)return json({error:'A valid Luas stop code is required.',workerVersion:WORKER_VERSION},400);
-  return json(buildForecast(code,stop,feed),200,{'Cache-Control':`public,max-age=5,s-maxage=${CACHE_SECONDS}`,'X-Luas-Provider':'nta-gtfs-realtime','X-Worker-Version':WORKER_VERSION});
+  return json(buildForecast(code,stop,feed),200,{'Cache-Control':`public,max-age=5,s-maxage=${FRESH_SECONDS}`,'X-Luas-Provider':'nta-gtfs-realtime','X-Worker-Version':WORKER_VERSION,'X-Feed-Cache':feed.cache.status});
  }catch(error){return json({error:'The NTA realtime feed could not be processed.',detail:error instanceof Error?error.message:String(error),workerVersion:WORKER_VERSION},502);}
 }};
 
 async function getFeed(key,ctx){
  const cache=caches.default;
- const cacheKey=new Request('https://cache.vibecode.invalid/nta-trip-updates-v2-schedule3');
- let response=await cache.match(cacheKey);
- if(!response){
-  response=await fetch(NTA_URL,{headers:{Accept:'application/json','Cache-Control':'no-cache','x-api-key':key}});
-  if(!response.ok)throw new Error(`NTA returned HTTP ${response.status}.`);
-  response=new Response(response.body,response);
-  response.headers.set('Cache-Control',`public,max-age=${CACHE_SECONDS}`);
-  ctx.waitUntil(cache.put(cacheKey,response.clone()));
+ const cached=await readCachedFeed(cache);
+ if(cached&&cached.ageSeconds<=FRESH_SECONDS)return withCacheMetadata(cached.data,'fresh',cached.ageSeconds);
+ try{
+  const refreshed=await refreshFeedOnce(key,cache,ctx);
+  return withCacheMetadata(refreshed.data,'refreshed',0);
+ }catch(error){
+  if(cached&&cached.ageSeconds<=STALE_SECONDS)return withCacheMetadata(cached.data,'stale',cached.ageSeconds,error);
+  throw error;
  }
+}
+
+async function readCachedFeed(cache){
+ const response=await cache.match(FEED_CACHE_KEY);
+ if(!response)return null;
+ const fetchedAt=Number(response.headers.get('X-Fetched-At')||0);
+ if(!fetchedAt)return null;
  const data=await response.json();
+ validateFeed(data);
+ return {data,ageSeconds:Math.max(0,Math.floor(Date.now()/1000-fetchedAt))};
+}
+
+async function refreshFeedOnce(key,cache,ctx){
+ if(feedRefreshPromise)return feedRefreshPromise;
+ feedRefreshPromise=(async()=>{
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),UPSTREAM_TIMEOUT_MS);
+  try{
+   const response=await fetch(NTA_URL,{headers:{Accept:'application/json','Cache-Control':'no-cache','x-api-key':key},signal:controller.signal});
+   if(!response.ok){const retryAfter=response.headers.get('Retry-After');throw new Error(`NTA returned HTTP ${response.status}${retryAfter?` (retry after ${retryAfter})`:''}.`);}
+   const data=await response.json();
+   validateFeed(data);
+   const stored=new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json','Cache-Control':`public,max-age=${STALE_SECONDS}`,'X-Fetched-At':String(Math.floor(Date.now()/1000))}});
+   ctx.waitUntil(cache.put(FEED_CACHE_KEY,stored));
+   return {data};
+  }catch(error){
+   if(error?.name==='AbortError')throw new Error(`NTA request timed out after ${UPSTREAM_TIMEOUT_MS}ms.`);
+   throw error;
+  }finally{clearTimeout(timeout);}
+ })();
+ try{return await feedRefreshPromise}finally{feedRefreshPromise=null;}
+}
+
+function validateFeed(data){
  const entities=data?.entity||data?.Entity;
  if(!Array.isArray(entities))throw new Error('NTA returned an unexpected JSON structure.');
- return {...data,entity:entities};
+ if(!data.entity)data={...data,entity:entities};
+ return data;
+}
+
+function withCacheMetadata(data,status,ageSeconds,error){
+ const entities=data?.entity||data?.Entity;
+ return {...data,entity:entities,cache:{status,ageSeconds,freshSeconds:FRESH_SECONDS,staleSeconds:STALE_SECONDS,...(error?{fallbackReason:error instanceof Error?error.message:String(error)}:{})}};
 }
 
 function buildForecast(code,[name,...stopIds],feed){
@@ -83,7 +126,7 @@ function buildForecast(code,[name,...stopIds],feed){
   }
  }
  departures.sort((a,b)=>a.scheduledAt.localeCompare(b.scheduledAt));
- return {apiVersion:1,workerVersion:WORKER_VERSION,provider:'nta-gtfs-realtime',stop:{code,name,ids:stopIds,codes:STOP_CODES[code]||[]},updated:new Date().toISOString(),message:'Official NTA GTFS-Realtime forecast',departures:dedupe(departures).slice(0,12),diagnostics:{entities:feed.entity.length,tripUpdates,stopUpdates,matchedStops,reconstructed,matches:departures.length}};
+ return {apiVersion:1,workerVersion:WORKER_VERSION,provider:'nta-gtfs-realtime',stop:{code,name,ids:stopIds,codes:STOP_CODES[code]||[]},updated:new Date().toISOString(),message:feed.cache.status==='stale'?'Official NTA forecast (temporarily using cached data)':'Official NTA GTFS-Realtime forecast',cache:feed.cache,departures:dedupe(departures).slice(0,12),diagnostics:{entities:feed.entity.length,tripUpdates,stopUpdates,matchedStops,reconstructed,matches:departures.length}};
 }
 
 function resolveDestination(routeId,directionId,items,fallback){
@@ -110,7 +153,7 @@ function buildFeedDiagnostics(feed){
   if(tripSamples.length<12)tripSamples.push({routeId:route,tripId,directionId:descriptor.directionId??descriptor.direction_id??descriptor.DirectionId??null,startTime:descriptor.startTime??descriptor.start_time??descriptor.StartTime??null,startDate:descriptor.startDate??descriptor.start_date??descriptor.StartDate??null,stopIds:(tu.stopTimeUpdate||tu.stop_time_update||tu.StopTimeUpdate||[]).slice(0,4).map(item=>String(item.stopId??item.stop_id??item.StopId??''))});
   if(luasCandidates.length<20&&LUAS_ROUTES.includes(route))luasCandidates.push({routeId:route,tripId,trip:sanitise(descriptor,3),updates:sanitise((tu.stopTimeUpdate||tu.stop_time_update||tu.StopTimeUpdate||[]).slice(0,3),4)});
  }
- return {workerVersion:WORKER_VERSION,upstream:NTA_URL,generatedAt:new Date().toISOString(),topLevelKeys:Object.keys(feed),entityCount:feed.entity.length,firstEntityKeys:Object.keys(first),firstEntity:sanitise(first,4),firstTripUpdateKeys:Object.keys(update),firstTripDescriptor:sanitise(trip,3),firstStopUpdate:sanitise(stopUpdates[0]||null,3),scheduleRows:LUAS_SCHEDULE_ROWS.length,topRoutes:topEntries(routeCounts,30),tripSamples,luasCandidates};
+ return {workerVersion:WORKER_VERSION,upstream:NTA_URL,generatedAt:new Date().toISOString(),cache:feed.cache,topLevelKeys:Object.keys(feed).filter(key=>key!=='cache'),entityCount:feed.entity.length,firstEntityKeys:Object.keys(first),firstEntity:sanitise(first,4),firstTripUpdateKeys:Object.keys(update),firstTripDescriptor:sanitise(trip,3),firstStopUpdate:sanitise(stopUpdates[0]||null,3),scheduleRows:LUAS_SCHEDULE_ROWS.length,topRoutes:topEntries(routeCounts,30),tripSamples,luasCandidates};
 }
 
 function scheduleKey(route,direction,stopId,sequence){return `${route}|${Number(direction)}|${normaliseStopId(stopId)}|${Number(sequence)}`;}
