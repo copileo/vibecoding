@@ -1,0 +1,30 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>LuasForecasts | Error</title>
+</head>
+
+<body>
+    <div id="error-message">
+        <div class="row">
+            <div class="large-12 columns">
+                <h1>500</h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="large-12 columns">
+                <h2>An error has occurred</h2>
+            </div>
+        </div>
+        <div class="row">
+            <div class="large-12 columns">
+                <p>
+                    The error has been logged so that we can fix it!<br />
+                    <small>Thanks for your patience.</small>
+                </p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
