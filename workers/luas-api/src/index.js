@@ -1,4 +1,4 @@
-const LUAS_API = 'https://luasforecasts.rpa.ie/xml/get.ashx';
+const LUAS_API = 'http://luasforecasts.rpa.ie/xml/get.ashx';
 const ALLOWED_ORIGIN = 'https://copileo.github.io';
 const STOP_CODES = new Set(['tpt','sdk','msq','gdk','con','bus','abb','jer','fou','smi','mus','heu','jam','fat','ria','sui','gol','dri','bla','blu','kyl','red','kin','bel','coo','hos','tal','fet','che','cit','for','sag','bro','cab','phi','gra','brd','dom','par','ocu','ocg','mar','wes','tri','daw','sti','har','cha','ran','bee','cow','mil','win','dun','bal','kil','sti2','san','cen','gln','gal','leo','bal2','car','lau','che2','bri']);
 
@@ -34,21 +34,22 @@ export default {
 
     try {
       const upstream = await fetch(upstreamUrl.toString(), {
-        method: 'GET',
-        headers: {
-          'Accept': '*/*',
-          'User-Agent': 'curl/8.0',
-          'Cache-Control': 'no-cache'
-        },
+        redirect: 'follow',
         cf: { cacheTtl: 15, cacheEverything: true }
       });
 
       const body = await upstream.text();
-
       if (!upstream.ok) {
         return json({
           error: `Luas API returned ${upstream.status}.`,
-          upstream: body.slice(0, 240)
+          upstream: body.slice(0, 300)
+        }, 502);
+      }
+
+      if (!body.trim().startsWith('<')) {
+        return json({
+          error: 'Luas API returned an unexpected response.',
+          upstream: body.slice(0, 300)
         }, 502);
       }
 
