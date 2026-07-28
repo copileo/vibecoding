@@ -1,1 +1,1 @@
-window.LUAS_DATA_BASE = '../../luas-data';
+window.LUAS_API_BASE = 'https://vibecoding.copileo.workers.dev';
