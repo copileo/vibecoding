@@ -1,4 +1,4 @@
-const APP_VERSION='1.2.0';
+const APP_VERSION='1.3.0';
 const STORAGE_KEY='vibecode-luas-live-v1';
 const DEFAULT_QUERIES=[{id:'trinity-brides-glen',stopCode:'tri',stopName:'Trinity',direction:'Outbound',destination:'Brides Glen'}];
 const FALLBACK_STOPS=[
@@ -18,6 +18,7 @@ const networkDot=document.querySelector('#network-dot');
 const versionLabel=document.querySelector('#app-version');
 let queries=loadQueries();
 let stops=[...FALLBACK_STOPS];
+let boardData=new Map();
 
 if(versionLabel)versionLabel.textContent=`v${APP_VERSION}`;
 
@@ -43,17 +44,24 @@ function loadStops(){
 }
 
 function normaliseMinutes(value){const clean=String(value??'').trim();if(!clean)return null;if(/^due$/i.test(clean))return 0;const number=Number.parseInt(clean,10);return Number.isFinite(number)?number:null}
+function parseCreated(value){const date=new Date(value);return Number.isNaN(date.getTime())?new Date():date}
 function getDirection(xml,name){return [...xml.querySelectorAll('direction')].find(node=>(node.getAttribute('name')||'').toLowerCase()===name.toLowerCase())}
 function parseForecast(xml,query){
   const direction=getDirection(xml,query.direction);
   const all=direction?[...direction.querySelectorAll('tram')]:[];
   const destination=escapeText(query.destination).toLowerCase();
-  const trams=all.filter(node=>!destination||(node.getAttribute('destination')||'').toLowerCase().includes(destination)).map(node=>({destination:node.getAttribute('destination')||'Tram',minutes:normaliseMinutes(node.getAttribute('dueMins'))})).filter(item=>item.minutes!==null).slice(0,3);
+  const created=parseCreated(xml.documentElement.getAttribute('created'));
+  const trams=all.filter(node=>!destination||(node.getAttribute('destination')||'').toLowerCase().includes(destination)).map(node=>{
+    const minutes=normaliseMinutes(node.getAttribute('dueMins'));
+    return{destination:node.getAttribute('destination')||'Tram',scheduledAt:minutes===null?null:new Date(created.getTime()+minutes*60000)};
+  }).filter(item=>item.scheduledAt).slice(0,3);
   const message=xml.documentElement.getAttribute('message')||direction?.getAttribute('message')||'Live Luas forecast';
-  const created=xml.documentElement.getAttribute('created')||new Date().toISOString();
   return{trams,message,created};
 }
-function formatUpdated(value){const date=new Date(value);if(Number.isNaN(date.getTime()))return 'Updated recently';return `Updated ${new Intl.DateTimeFormat('en-IE',{hour:'2-digit',minute:'2-digit'}).format(date)}`}
+function formatClock(value){return new Intl.DateTimeFormat('en-IE',{hour:'2-digit',minute:'2-digit',hour12:false}).format(value)}
+function snapshotAgeMinutes(created){return Math.max(0,Math.floor((Date.now()-created.getTime())/60000))}
+function formatUpdated(created){const age=snapshotAgeMinutes(created);return age>10?`Stale · ${formatClock(created)}`:`Updated ${formatClock(created)} · ${age}m ago`}
+function getRemainingMinutes(scheduledAt){return Math.max(0,Math.ceil((scheduledAt.getTime()-Date.now())/60000))}
 function renderSkeleton(query){
   const node=template.content.firstElementChild.cloneNode(true);node.dataset.id=query.id;
   node.querySelector('.direction').textContent=query.direction;
@@ -65,25 +73,27 @@ function renderSkeleton(query){
   boards.append(node);return node;
 }
 function renderForecast(node,data){
+  const active=data.trams.filter(tram=>tram.scheduledAt.getTime()>Date.now()-60000);
   const times=node.querySelector('.times');
-  times.innerHTML=data.trams.length?data.trams.map(tram=>`<div class="time-chip ${tram.minutes===0?'due':''}"><strong>${tram.minutes===0?'Due':tram.minutes}</strong><span>${tram.minutes===0?'now':'min'} · ${tram.destination}</span></div>`).join(''):'<div class="time-chip"><strong>—</strong><span>No trams forecast</span></div>';
-  node.querySelector('.message').textContent=data.message;
+  times.innerHTML=active.length?active.map(tram=>{const remaining=getRemainingMinutes(tram.scheduledAt);return`<div class="time-chip ${remaining===0?'due':''}"><strong>${remaining===0?'Due':remaining}</strong><span>${formatClock(tram.scheduledAt)} · ${tram.destination}</span></div>`}).join(''):'<div class="time-chip"><strong>—</strong><span>No current trams</span></div>';
+  node.querySelector('.message').textContent=snapshotAgeMinutes(data.created)>10?'Snapshot is stale — awaiting refresh':data.message;
   node.querySelector('.updated').textContent=formatUpdated(data.created);
 }
+function rerenderCountdowns(){for(const [id,data] of boardData){const node=boards.querySelector(`[data-id="${CSS.escape(id)}"]`);if(node)renderForecast(node,data)}}
 function renderError(node,error){node.querySelector('.times').innerHTML='<div class="time-chip"><strong>!</strong><span>Unavailable</span></div>';node.querySelector('.message').textContent=error.message||'Could not load the latest snapshot';node.querySelector('.updated').textContent='Tap refresh to retry'}
 
 async function refreshBoard(query,node){
-  try{const xml=await fetchXML(query.stopCode);const data=parseForecast(xml,query);renderForecast(node,data);return data}
-  catch(error){renderError(node,error);throw error}
+  try{const xml=await fetchXML(query.stopCode);const data=parseForecast(xml,query);boardData.set(query.id,data);renderForecast(node,data);return data}
+  catch(error){boardData.delete(query.id);renderError(node,error);throw error}
 }
 async function refreshAll(){
-  boards.innerHTML='';emptyState.hidden=queries.length>0;
+  boards.innerHTML='';boardData.clear();emptyState.hidden=queries.length>0;
   if(!queries.length){networkStatus.textContent='Add a board to check service';networkDot.className='status-dot loading';return}
   networkStatus.textContent='Checking latest service snapshot…';networkDot.className='status-dot loading';
   const cards=queries.map(query=>[query,renderSkeleton(query)]);
   const results=await Promise.allSettled(cards.map(([query,node])=>refreshBoard(query,node)));
   const ok=results.filter(result=>result.status==='fulfilled');
-  if(ok.length){const messages=ok.map(result=>result.value.message).filter(Boolean);const abnormal=messages.find(message=>!/operating normally/i.test(message));networkStatus.textContent=abnormal||'Luas services available';networkDot.className=`status-dot ${abnormal?'loading':''}`.trim()}
+  if(ok.length){const stale=ok.every(result=>snapshotAgeMinutes(result.value.created)>10);const messages=ok.map(result=>result.value.message).filter(Boolean);const abnormal=messages.find(message=>!/operating normally/i.test(message));networkStatus.textContent=stale?'Forecast snapshot is stale':abnormal||'Luas services available';networkDot.className=`status-dot ${(stale||abnormal)?'loading':''}`.trim()}
   else{networkStatus.textContent='Live snapshot unavailable';networkDot.className='status-dot error'}
 }
 function removeQuery(id){queries=queries.filter(query=>query.id!==id);saveQueries();refreshAll()}
@@ -103,4 +113,5 @@ dialog.addEventListener('click',event=>{if(event.target===dialog)closeForm()});
 
 loadStops();
 refreshAll();
+setInterval(rerenderCountdowns,15000);
 if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
