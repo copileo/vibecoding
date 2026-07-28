@@ -33,17 +33,26 @@ export default {
     upstreamUrl.searchParams.set('encrypt', 'false');
 
     try {
-      const upstream = await fetch(upstreamUrl, {
-        headers: { Accept: 'application/xml,text/xml' },
+      const upstream = await fetch(upstreamUrl.toString(), {
+        method: 'GET',
+        headers: {
+          'Accept': '*/*',
+          'User-Agent': 'curl/8.0',
+          'Cache-Control': 'no-cache'
+        },
         cf: { cacheTtl: 15, cacheEverything: true }
       });
 
+      const body = await upstream.text();
+
       if (!upstream.ok) {
-        return json({ error: `Luas API returned ${upstream.status}.` }, 502);
+        return json({
+          error: `Luas API returned ${upstream.status}.`,
+          upstream: body.slice(0, 240)
+        }, 502);
       }
 
-      const xml = await upstream.text();
-      return new Response(xml, {
+      return new Response(body, {
         status: 200,
         headers: {
           ...corsHeaders(),
