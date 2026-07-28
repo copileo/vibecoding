@@ -1,5 +1,5 @@
-const APP_VERSION='1.5.0';
-const API_BASE=String(window.LUAS_API_BASE||'').replace(/\/$/,'');
+const APP_VERSION='1.6.0';
+const DATA_BASE=String(window.LUAS_DATA_BASE||'../../luas-data').replace(/\/$/,'');
 const STORAGE_KEY='vibecode-luas-live-v1';
 const DEFAULT_QUERIES=[{id:'trinity-brides-glen',stopCode:'tri',stopName:'Trinity',direction:'Outbound',destination:'Brides Glen'}];
 const FALLBACK_STOPS=[
@@ -28,15 +28,11 @@ function saveQueries(){localStorage.setItem(STORAGE_KEY,JSON.stringify(queries))
 function escapeText(value=''){return String(value).trim()}
 
 async function fetchForecast(stopCode){
-  if(!API_BASE)throw new Error('Cloudflare Worker URL is not configured yet.');
-  const response=await fetch(`${API_BASE}/v1/forecast?stop=${encodeURIComponent(stopCode)}`,{cache:'no-store',headers:{Accept:'application/json'}});
-  if(!response.ok){
-    let detail='';
-    try{const body=await response.json();detail=body.detail||body.error||''}catch{}
-    throw new Error(detail||`Live feed unavailable (${response.status}).`);
-  }
+  const separator=DATA_BASE.includes('?')?'&':'?';
+  const response=await fetch(`${DATA_BASE}/${encodeURIComponent(stopCode)}.json${separator}t=${Date.now()}`,{cache:'no-store',headers:{Accept:'application/json'}});
+  if(!response.ok)throw new Error(`Cached forecast unavailable (${response.status}).`);
   const data=await response.json();
-  if(!data||data.apiVersion!==1||!Array.isArray(data.departures))throw new Error('The live feed returned invalid data.');
+  if(!data||data.apiVersion!==1||!Array.isArray(data.departures))throw new Error('The cached forecast returned invalid data.');
   return data;
 }
 
@@ -59,18 +55,23 @@ function parseForecast(payload,query){
     const minutes=Number(item.minutes);
     return{destination:item.destination||'Tram',scheduledAt:Number.isFinite(minutes)?new Date(created.getTime()+minutes*60000):null};
   }).filter(item=>item.scheduledAt).slice(0,3);
-  return{trams,message:payload.message||'Live Luas forecast',created};
+  const staleAfter=Number(payload.staleAfterSeconds)||900;
+  const stale=(Date.now()-created.getTime())>staleAfter*1000;
+  const collectionError=escapeText(payload.collectionError);
+  const baseMessage=payload.message||'Cached Luas forecast';
+  const message=collectionError?`${baseMessage} · latest refresh failed`:baseMessage;
+  return{trams,message,created,stale};
 }
 function formatClock(value){return new Intl.DateTimeFormat('en-IE',{hour:'2-digit',minute:'2-digit',hour12:false}).format(value)}
 function feedAgeMinutes(created){return Math.max(0,Math.floor((Date.now()-created.getTime())/60000))}
-function formatUpdated(created){const age=feedAgeMinutes(created);return `Updated ${formatClock(created)} · ${age}m ago`}
+function formatUpdated(created,stale){const age=feedAgeMinutes(created);return `${stale?'Stale · ':''}Updated ${formatClock(created)} · ${age}m ago`}
 function getRemainingMinutes(scheduledAt){return Math.max(0,Math.ceil((scheduledAt.getTime()-Date.now())/60000))}
 function renderSkeleton(query){
   const node=template.content.firstElementChild.cloneNode(true);node.dataset.id=query.id;
   node.querySelector('.direction').textContent=query.direction;
   node.querySelector('.route-title').textContent=`${query.stopName} → ${query.destination||query.direction}`;
   node.querySelector('.times').innerHTML='<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
-  node.querySelector('.message').textContent='Loading live forecast…';
+  node.querySelector('.message').textContent='Loading cached forecast…';
   node.querySelector('.updated').textContent='';
   node.querySelector('.menu-button').addEventListener('click',()=>removeQuery(query.id));
   boards.append(node);return node;
@@ -80,10 +81,10 @@ function renderForecast(node,data){
   const times=node.querySelector('.times');
   times.innerHTML=active.length?active.map(tram=>{const remaining=getRemainingMinutes(tram.scheduledAt);return`<div class="time-chip ${remaining===0?'due':''}"><strong>${remaining===0?'Due':remaining}</strong><span>${formatClock(tram.scheduledAt)} · ${tram.destination}</span></div>`}).join(''):'<div class="time-chip"><strong>—</strong><span>No current trams</span></div>';
   node.querySelector('.message').textContent=data.message;
-  node.querySelector('.updated').textContent=formatUpdated(data.created);
+  node.querySelector('.updated').textContent=formatUpdated(data.created,data.stale);
 }
 function rerenderCountdowns(){for(const [id,data] of boardData){const node=boards.querySelector(`[data-id="${CSS.escape(id)}"]`);if(node)renderForecast(node,data)}}
-function renderError(node,error){node.querySelector('.times').innerHTML='<div class="time-chip"><strong>!</strong><span>Unavailable</span></div>';node.querySelector('.message').textContent=error.message||'Could not reach the live feed';node.querySelector('.updated').textContent='Tap refresh to retry'}
+function renderError(node,error){node.querySelector('.times').innerHTML='<div class="time-chip"><strong>!</strong><span>Unavailable</span></div>';node.querySelector('.message').textContent=error.message||'Could not load the cached forecast';node.querySelector('.updated').textContent='Tap refresh to retry'}
 
 async function refreshBoard(query,node){
   try{const payload=await fetchForecast(query.stopCode);const data=parseForecast(payload,query);boardData.set(query.id,data);renderForecast(node,data);return data}
@@ -92,12 +93,12 @@ async function refreshBoard(query,node){
 async function refreshAll(){
   boards.innerHTML='';boardData.clear();emptyState.hidden=queries.length>0;
   if(!queries.length){networkStatus.textContent='Add a board to check service';networkDot.className='status-dot loading';return}
-  networkStatus.textContent=API_BASE?'Checking live service…':'Worker setup required';networkDot.className='status-dot loading';
+  networkStatus.textContent='Checking cached service…';networkDot.className='status-dot loading';
   const cards=queries.map(query=>[query,renderSkeleton(query)]);
   const results=await Promise.allSettled(cards.map(([query,node])=>refreshBoard(query,node)));
   const ok=results.filter(result=>result.status==='fulfilled');
-  if(ok.length){const messages=ok.map(result=>result.value.message).filter(Boolean);const abnormal=messages.find(message=>!/operating normally/i.test(message));networkStatus.textContent=abnormal||'Luas services available';networkDot.className=`status-dot ${abnormal?'loading':''}`.trim()}
-  else{networkStatus.textContent=API_BASE?'Live feed unavailable':'Worker URL not configured';networkDot.className='status-dot error'}
+  if(ok.length){const stale=ok.some(result=>result.value.stale);const messages=ok.map(result=>result.value.message).filter(Boolean);const abnormal=messages.find(message=>!/operating normally/i.test(message));networkStatus.textContent=stale?'Forecast data is out of date':(abnormal||'Cached Luas service available');networkDot.className=`status-dot ${stale||abnormal?'loading':''}`.trim()}
+  else{networkStatus.textContent='Cached forecast unavailable';networkDot.className='status-dot error'}
 }
 function removeQuery(id){queries=queries.filter(query=>query.id!==id);saveQueries();refreshAll()}
 function openForm(){dialog.showModal()}
