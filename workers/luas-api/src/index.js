@@ -1,5 +1,5 @@
 const ALLOWED_ORIGIN='https://copileo.github.io';
-const NTA_URL='https://api.nationaltransport.ie/gtfsr/v2/gtfsr?format=json';
+const NTA_URL='https://api.nationaltransport.ie/gtfsr/v2/TripUpdates?format=json';
 const CACHE_SECONDS=20;
 
 const STOPS={
@@ -26,7 +26,7 @@ export default {async fetch(request,env,ctx){
 
 async function getFeed(key,ctx){
  const cache=caches.default;
- const cacheKey=new Request('https://cache.vibecode.invalid/nta-gtfsr-v2');
+ const cacheKey=new Request('https://cache.vibecode.invalid/nta-trip-updates-v2');
  let response=await cache.match(cacheKey);
  if(!response){
   response=await fetch(NTA_URL,{headers:{Accept:'application/json','Cache-Control':'no-cache','x-api-key':key}});
