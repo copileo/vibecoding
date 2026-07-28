@@ -3,11 +3,14 @@ import path from 'node:path';
 
 const OUTPUT_DIR = process.env.LUAS_OUTPUT_DIR || '_site/luas-data';
 const STALE_AFTER_SECONDS = 15 * 60;
-const CONCURRENCY = 6;
+const CONCURRENCY = 4;
+const MAX_ATTEMPTS = 3;
 
+// `code` remains the stable local filename/API identifier used by the site.
+// `apiCode` is the current Luas Forecasting API abbreviation where it differs.
 const STOPS = [
-  ['The Point','tpt'],['Spencer Dock','sdk'],['Mayor Square - NCI','msq'],["George's Dock",'gdk'],['Connolly','con'],['Busáras','bus'],['Abbey Street','abb'],['Jervis','jer'],['Four Courts','fou'],['Smithfield','smi'],['Museum','mus'],['Heuston','heu'],["James's",'jam'],['Fatima','fat'],['Rialto','ria'],['Suir Road','sui'],['Goldenbridge','gol'],['Drimnagh','dri'],['Blackhorse','bla'],['Bluebell','blu'],['Kylemore','kyl'],['Red Cow','red'],['Kingswood','kin'],['Belgard','bel'],['Cookstown','coo'],['Hospital','hos'],['Tallaght','tal'],['Fettercairn','fet'],['Cheeverstown','che'],['Citywest Campus','cit'],['Fortunestown','for'],['Saggart','sag'],['Broombridge','bro'],['Cabra','cab'],['Phibsborough','phi'],['Grangegorman','gra'],['Broadstone - University','brd'],['Dominick','dom'],['Parnell','par'],["O'Connell - Upper",'ocu'],["O'Connell - GPO",'ocg'],['Marlborough','mar'],['Westmoreland','wes'],['Trinity','tri'],['Dawson','daw'],["St. Stephen's Green",'sti'],['Harcourt','har'],['Charlemont','cha'],['Ranelagh','ran'],['Beechwood','bee'],['Cowper','cow'],['Milltown','mil'],['Windy Arbour','win'],['Dundrum','dun'],['Balally','bal'],['Kilmacud','kil'],['Stillorgan','sti2'],['Sandyford','san'],['Central Park','cen'],['Glencairn','gln'],['The Gallops','gal'],['Leopardstown Valley','leo'],['Ballyogan Wood','bal2'],['Carrickmines','car'],['Laughanstown','lau'],['Cherrywood','che2'],['Brides Glen','bri']
-].map(([name, code]) => ({ name, code }));
+  ['The Point','tpt'],['Spencer Dock','sdk'],['Mayor Square - NCI','msq','MAY'],["George's Dock",'gdk'],['Connolly','con'],['Busáras','bus'],['Abbey Street','abb'],['Jervis','jer'],['Four Courts','fou'],['Smithfield','smi'],['Museum','mus'],['Heuston','heu'],["James's",'jam'],['Fatima','fat'],['Rialto','ria'],['Suir Road','sui'],['Goldenbridge','gol'],['Drimnagh','dri'],['Blackhorse','bla'],['Bluebell','blu'],['Kylemore','kyl'],['Red Cow','red'],['Kingswood','kin'],['Belgard','bel'],['Cookstown','coo'],['Hospital','hos'],['Tallaght','tal'],['Fettercairn','fet'],['Cheeverstown','che','CVN'],['Citywest Campus','cit'],['Fortunestown','for'],['Saggart','sag'],['Broombridge','bro'],['Cabra','cab'],['Phibsborough','phi'],['Grangegorman','gra'],['Broadstone - University','brd','BDS'],['Dominick','dom'],['Parnell','par'],["O'Connell - Upper",'ocu'],["O'Connell - GPO",'ocg','OCP'],['Marlborough','mar'],['Westmoreland','wes'],['Trinity','tri','TRY'],['Dawson','daw'],["St. Stephen's Green",'sti','STS'],['Harcourt','har'],['Charlemont','cha'],['Ranelagh','ran'],['Beechwood','bee'],['Cowper','cow'],['Milltown','mil'],['Windy Arbour','win'],['Dundrum','dun'],['Balally','bal'],['Kilmacud','kil'],['Stillorgan','sti2','STI'],['Sandyford','san'],['Central Park','cen','CPK'],['Glencairn','gln','GLC'],['The Gallops','gal'],['Leopardstown Valley','leo','LPV'],['Ballyogan Wood','bal2','BAW'],['Carrickmines','car'],['Laughanstown','lau'],['Cherrywood','che2','CHE'],['Brides Glen','bri','BRG']
+].map(([name, code, apiCode = code]) => ({ name, code, apiCode }));
 
 function decodeXml(value = '') {
   return value
@@ -63,23 +66,54 @@ function parseForecastXml(xml, stop) {
   };
 }
 
-async function fetchStop(stop) {
-  const url = new URL('https://luasforecasts.rpa.ie/xml/get.ashx');
-  url.searchParams.set('action', 'forecast');
-  url.searchParams.set('stop', stop.code);
-  url.searchParams.set('encrypt', 'false');
+function sleep(milliseconds) {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
 
-  const response = await fetch(url, {
-    redirect: 'follow',
-    signal: AbortSignal.timeout(20_000),
-    headers: {
-      Accept: 'application/xml,text/xml;q=0.9,*/*;q=0.8',
-      'User-Agent': 'vibecoding-luas-cache/1.0 (+https://github.com/copileo/vibecoding)'
+function responseSnippet(body) {
+  return body.replace(/\s+/g, ' ').trim().slice(0, 240);
+}
+
+async function fetchStop(stop) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const url = new URL('https://luasforecasts.rpa.ie/xml/get.ashx');
+      url.searchParams.set('action', 'forecast');
+      url.searchParams.set('stop', stop.apiCode);
+      url.searchParams.set('encrypt', 'false');
+
+      const response = await fetch(url, {
+        redirect: 'follow',
+        signal: AbortSignal.timeout(20_000),
+        headers: {
+          Accept: 'application/xml,text/xml;q=0.9,*/*;q=0.8',
+          'User-Agent': 'vibecoding-luas-cache/1.1 (+https://github.com/copileo/vibecoding)'
+        }
+      });
+      const body = await response.text();
+      const contentType = response.headers.get('content-type') || 'unknown';
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}; content-type=${contentType}; body=${JSON.stringify(responseSnippet(body))}`);
+      }
+      if (!/<stopInfo\b/i.test(body)) {
+        throw new Error(`Missing stopInfo; content-type=${contentType}; body=${JSON.stringify(responseSnippet(body))}`);
+      }
+
+      return parseForecastXml(body, stop);
+    } catch (error) {
+      lastError = error;
+      if (attempt < MAX_ATTEMPTS) {
+        const delay = 500 * (2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
+        console.warn(`retrying ${stop.code} (${stop.apiCode}) after attempt ${attempt}: ${error instanceof Error ? error.message : String(error)}`);
+        await sleep(delay);
+      }
     }
-  });
-  const body = await response.text();
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return parseForecastXml(body, stop);
+  }
+
+  throw lastError;
 }
 
 async function readPrevious(stopCode) {
@@ -98,14 +132,15 @@ async function collect(stop) {
     return { code: stop.code, ok: true, departures: payload.departures.length };
   } catch (error) {
     const previous = await readPrevious(stop.code);
+    const message = error instanceof Error ? error.message : String(error);
     if (previous) {
-      previous.collectionError = error instanceof Error ? error.message : String(error);
+      previous.collectionError = message;
       previous.lastCollectionAttempt = new Date().toISOString();
       await writeFile(path.join(OUTPUT_DIR, `${stop.code}.json`), `${JSON.stringify(previous, null, 2)}\n`);
       console.warn(`kept stale ${stop.code}: ${previous.collectionError}`);
       return { code: stop.code, ok: false, preserved: true };
     }
-    console.error(`failed ${stop.code}:`, error);
+    console.error(`failed ${stop.code}: ${message}`);
     return { code: stop.code, ok: false, preserved: false };
   }
 }
