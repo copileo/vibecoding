@@ -1,4 +1,4 @@
-const APP_VERSION='1.4.0';
+const APP_VERSION='1.5.0';
 const API_BASE=String(window.LUAS_API_BASE||'').replace(/\/$/,'');
 const STORAGE_KEY='vibecode-luas-live-v1';
 const DEFAULT_QUERIES=[{id:'trinity-brides-glen',stopCode:'tri',stopName:'Trinity',direction:'Outbound',destination:'Brides Glen'}];
@@ -26,17 +26,18 @@ if(versionLabel)versionLabel.textContent=`v${APP_VERSION}`;
 function loadQueries(){try{const value=JSON.parse(localStorage.getItem(STORAGE_KEY));return Array.isArray(value)&&value.length?value:DEFAULT_QUERIES}catch{return DEFAULT_QUERIES}}
 function saveQueries(){localStorage.setItem(STORAGE_KEY,JSON.stringify(queries))}
 function escapeText(value=''){return String(value).trim()}
-function parseXML(text){const xml=new DOMParser().parseFromString(text,'application/xml');if(xml.querySelector('parsererror'))throw new Error('The Luas API returned invalid data.');return xml}
 
-async function fetchXML(stopCode){
+async function fetchForecast(stopCode){
   if(!API_BASE)throw new Error('Cloudflare Worker URL is not configured yet.');
-  const response=await fetch(`${API_BASE}/forecast?stop=${encodeURIComponent(stopCode)}`,{cache:'no-store',headers:{Accept:'application/xml,text/xml'}});
+  const response=await fetch(`${API_BASE}/v1/forecast?stop=${encodeURIComponent(stopCode)}`,{cache:'no-store',headers:{Accept:'application/json'}});
   if(!response.ok){
     let detail='';
-    try{detail=(await response.json()).error||''}catch{}
+    try{const body=await response.json();detail=body.detail||body.error||''}catch{}
     throw new Error(detail||`Live feed unavailable (${response.status}).`);
   }
-  return parseXML(await response.text());
+  const data=await response.json();
+  if(!data||data.apiVersion!==1||!Array.isArray(data.departures))throw new Error('The live feed returned invalid data.');
+  return data;
 }
 
 function loadStops(){
@@ -45,20 +46,20 @@ function loadStops(){
   const trinity=stops.find(stop=>stop.name.toLowerCase()==='trinity');if(trinity)stopSelect.value=trinity.code;
 }
 
-function normaliseMinutes(value){const clean=String(value??'').trim();if(!clean)return null;if(/^due$/i.test(clean))return 0;const number=Number.parseInt(clean,10);return Number.isFinite(number)?number:null}
 function parseCreated(value){const date=new Date(value);return Number.isNaN(date.getTime())?new Date():date}
-function getDirection(xml,name){return [...xml.querySelectorAll('direction')].find(node=>(node.getAttribute('name')||'').toLowerCase()===name.toLowerCase())}
-function parseForecast(xml,query){
-  const direction=getDirection(xml,query.direction);
-  const all=direction?[...direction.querySelectorAll('tram')]:[];
+function parseForecast(payload,query){
   const destination=escapeText(query.destination).toLowerCase();
-  const created=parseCreated(xml.documentElement.getAttribute('created'));
-  const trams=all.filter(node=>!destination||(node.getAttribute('destination')||'').toLowerCase().includes(destination)).map(node=>{
-    const minutes=normaliseMinutes(node.getAttribute('dueMins'));
-    return{destination:node.getAttribute('destination')||'Tram',scheduledAt:minutes===null?null:new Date(created.getTime()+minutes*60000)};
+  const direction=escapeText(query.direction).toLowerCase();
+  const created=parseCreated(payload.updated);
+  const trams=payload.departures.filter(item=>{
+    const itemDirection=escapeText(item.direction).toLowerCase();
+    const itemDestination=escapeText(item.destination).toLowerCase();
+    return(!direction||itemDirection===direction)&&(!destination||itemDestination.includes(destination));
+  }).map(item=>{
+    const minutes=Number(item.minutes);
+    return{destination:item.destination||'Tram',scheduledAt:Number.isFinite(minutes)?new Date(created.getTime()+minutes*60000):null};
   }).filter(item=>item.scheduledAt).slice(0,3);
-  const message=xml.documentElement.getAttribute('message')||direction?.getAttribute('message')||'Live Luas forecast';
-  return{trams,message,created};
+  return{trams,message:payload.message||'Live Luas forecast',created};
 }
 function formatClock(value){return new Intl.DateTimeFormat('en-IE',{hour:'2-digit',minute:'2-digit',hour12:false}).format(value)}
 function feedAgeMinutes(created){return Math.max(0,Math.floor((Date.now()-created.getTime())/60000))}
@@ -85,7 +86,7 @@ function rerenderCountdowns(){for(const [id,data] of boardData){const node=board
 function renderError(node,error){node.querySelector('.times').innerHTML='<div class="time-chip"><strong>!</strong><span>Unavailable</span></div>';node.querySelector('.message').textContent=error.message||'Could not reach the live feed';node.querySelector('.updated').textContent='Tap refresh to retry'}
 
 async function refreshBoard(query,node){
-  try{const xml=await fetchXML(query.stopCode);const data=parseForecast(xml,query);boardData.set(query.id,data);renderForecast(node,data);return data}
+  try{const payload=await fetchForecast(query.stopCode);const data=parseForecast(payload,query);boardData.set(query.id,data);renderForecast(node,data);return data}
   catch(error){boardData.delete(query.id);renderError(node,error);throw error}
 }
 async function refreshAll(){
