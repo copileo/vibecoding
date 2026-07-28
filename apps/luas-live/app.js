@@ -1,5 +1,4 @@
-const APP_VERSION='1.1.0';
-const API='https://luasforecasts.rpa.ie/xml/get.ashx';
+const APP_VERSION='1.2.0';
 const STORAGE_KEY='vibecode-luas-live-v1';
 const DEFAULT_QUERIES=[{id:'trinity-brides-glen',stopCode:'tri',stopName:'Trinity',direction:'Outbound',destination:'Brides Glen'}];
 const FALLBACK_STOPS=[
@@ -18,42 +17,26 @@ const networkStatus=document.querySelector('#network-status');
 const networkDot=document.querySelector('#network-dot');
 const versionLabel=document.querySelector('#app-version');
 let queries=loadQueries();
-let stops=[];
+let stops=[...FALLBACK_STOPS];
 
 if(versionLabel)versionLabel.textContent=`v${APP_VERSION}`;
 
 function loadQueries(){try{const value=JSON.parse(localStorage.getItem(STORAGE_KEY));return Array.isArray(value)&&value.length?value:DEFAULT_QUERIES}catch{return DEFAULT_QUERIES}}
 function saveQueries(){localStorage.setItem(STORAGE_KEY,JSON.stringify(queries))}
 function escapeText(value=''){return String(value).trim()}
-function parseXML(text){const xml=new DOMParser().parseFromString(text,'application/xml');if(xml.querySelector('parsererror'))throw new Error('The Luas feed returned invalid data.');return xml}
-function buildApiUrl(params){const url=new URL(API);Object.entries({...params,encrypt:'false'}).forEach(([key,value])=>url.searchParams.set(key,value));return url.toString()}
+function parseXML(text){const xml=new DOMParser().parseFromString(text,'application/xml');if(xml.querySelector('parsererror'))throw new Error('The Luas snapshot contains invalid data.');return xml}
 
-async function requestText(url){
-  const response=await fetch(url,{cache:'no-store',headers:{Accept:'application/xml,text/xml,text/plain,*/*'}});
-  if(!response.ok)throw new Error(`Feed request failed (${response.status})`);
-  return response.text();
-}
-
-async function fetchXML(params){
-  const target=buildApiUrl(params);
-  const candidates=[
-    target,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`,
-    `https://corsproxy.io/?url=${encodeURIComponent(target)}`
-  ];
-  let lastError;
-  for(const candidate of candidates){
-    try{return parseXML(await requestText(candidate))}
-    catch(error){lastError=error}
+async function fetchXML(stopCode){
+  const url=`./data/${encodeURIComponent(stopCode)}.xml?t=${Date.now()}`;
+  const response=await fetch(url,{cache:'no-store'});
+  if(!response.ok){
+    if(response.status===404)throw new Error('Live snapshot is being prepared. Try again shortly.');
+    throw new Error(`Live snapshot unavailable (${response.status}).`);
   }
-  throw new Error(lastError?.message||'Could not reach the Luas live feed.');
+  return parseXML(await response.text());
 }
 
-async function loadStops(){
-  try{
-    const xml=await fetchXML({action:'stops'});
-    stops=[...xml.querySelectorAll('stop')].map(node=>({name:node.getAttribute('name')||node.textContent.trim(),code:node.getAttribute('abrev')||node.getAttribute('abbr')||node.getAttribute('code')})).filter(stop=>stop.name&&stop.code);
-  }catch{stops=FALLBACK_STOPS}
+function loadStops(){
   stops.sort((a,b)=>a.name.localeCompare(b.name,'en-IE'));
   stopSelect.innerHTML=stops.map(stop=>`<option value="${stop.code}">${stop.name}</option>`).join('');
   const trinity=stops.find(stop=>stop.name.toLowerCase()==='trinity');if(trinity)stopSelect.value=trinity.code;
@@ -70,13 +53,13 @@ function parseForecast(xml,query){
   const created=xml.documentElement.getAttribute('created')||new Date().toISOString();
   return{trams,message,created};
 }
-function formatUpdated(value){const date=new Date(value);if(Number.isNaN(date.getTime()))return 'Updated now';return `Updated ${new Intl.DateTimeFormat('en-IE',{hour:'2-digit',minute:'2-digit'}).format(date)}`}
+function formatUpdated(value){const date=new Date(value);if(Number.isNaN(date.getTime()))return 'Updated recently';return `Updated ${new Intl.DateTimeFormat('en-IE',{hour:'2-digit',minute:'2-digit'}).format(date)}`}
 function renderSkeleton(query){
   const node=template.content.firstElementChild.cloneNode(true);node.dataset.id=query.id;
   node.querySelector('.direction').textContent=query.direction;
   node.querySelector('.route-title').textContent=`${query.stopName} → ${query.destination||query.direction}`;
   node.querySelector('.times').innerHTML='<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
-  node.querySelector('.message').textContent='Loading live forecast…';
+  node.querySelector('.message').textContent='Loading latest forecast…';
   node.querySelector('.updated').textContent='';
   node.querySelector('.menu-button').addEventListener('click',()=>removeQuery(query.id));
   boards.append(node);return node;
@@ -87,21 +70,21 @@ function renderForecast(node,data){
   node.querySelector('.message').textContent=data.message;
   node.querySelector('.updated').textContent=formatUpdated(data.created);
 }
-function renderError(node,error){node.querySelector('.times').innerHTML='<div class="time-chip"><strong>!</strong><span>Unavailable</span></div>';node.querySelector('.message').textContent=error.message||'Could not reach the live feed';node.querySelector('.updated').textContent='Tap refresh to retry'}
+function renderError(node,error){node.querySelector('.times').innerHTML='<div class="time-chip"><strong>!</strong><span>Unavailable</span></div>';node.querySelector('.message').textContent=error.message||'Could not load the latest snapshot';node.querySelector('.updated').textContent='Tap refresh to retry'}
 
 async function refreshBoard(query,node){
-  try{const xml=await fetchXML({action:'forecast',stop:query.stopCode});const data=parseForecast(xml,query);renderForecast(node,data);return data}
+  try{const xml=await fetchXML(query.stopCode);const data=parseForecast(xml,query);renderForecast(node,data);return data}
   catch(error){renderError(node,error);throw error}
 }
 async function refreshAll(){
   boards.innerHTML='';emptyState.hidden=queries.length>0;
   if(!queries.length){networkStatus.textContent='Add a board to check service';networkDot.className='status-dot loading';return}
-  networkStatus.textContent='Checking live service…';networkDot.className='status-dot loading';
+  networkStatus.textContent='Checking latest service snapshot…';networkDot.className='status-dot loading';
   const cards=queries.map(query=>[query,renderSkeleton(query)]);
   const results=await Promise.allSettled(cards.map(([query,node])=>refreshBoard(query,node)));
   const ok=results.filter(result=>result.status==='fulfilled');
   if(ok.length){const messages=ok.map(result=>result.value.message).filter(Boolean);const abnormal=messages.find(message=>!/operating normally/i.test(message));networkStatus.textContent=abnormal||'Luas services available';networkDot.className=`status-dot ${abnormal?'loading':''}`.trim()}
-  else{networkStatus.textContent='Live feed unavailable';networkDot.className='status-dot error'}
+  else{networkStatus.textContent='Live snapshot unavailable';networkDot.className='status-dot error'}
 }
 function removeQuery(id){queries=queries.filter(query=>query.id!==id);saveQueries();refreshAll()}
 function openForm(){dialog.showModal()}
@@ -118,4 +101,6 @@ document.querySelector('#close-form').addEventListener('click',closeForm);
 document.querySelector('#refresh-all').addEventListener('click',refreshAll);
 dialog.addEventListener('click',event=>{if(event.target===dialog)closeForm()});
 
-(async()=>{await loadStops();await refreshAll();if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))})();
+loadStops();
+refreshAll();
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
