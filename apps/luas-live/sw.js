@@ -1,4 +1,4 @@
-const CACHE='luas-live-v7';
+const CACHE='luas-live-v8';
 const SHELL=['./','./index.html','./styles.css','./config.js','./app.js','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
@@ -9,7 +9,7 @@ self.addEventListener('fetch',event=>{
   event.respondWith((async()=>{
     try{
       const response=await fetch(event.request);
-      if(response&&response.ok){const copy=response.clone();const cache=await caches.open(CACHE);await cache.put(event.request,copy)}
+      if(response&&response.ok&&!url.pathname.includes('/luas-data/')){const copy=response.clone();const cache=await caches.open(CACHE);await cache.put(event.request,copy)}
       return response;
     }catch{
       return (await caches.match(event.request))||Response.error();
