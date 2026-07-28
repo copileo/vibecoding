@@ -1,0 +1,14 @@
+{
+  "name": "Luas Live",
+  "short_name": "Luas Live",
+  "description": "Saved live Luas departure boards for Dublin.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#06110d",
+  "theme_color": "#071b14",
+  "lang": "en-IE",
+  "icons": [
+    {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
