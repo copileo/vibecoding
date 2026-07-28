@@ -1,8 +1,9 @@
+const APP_VERSION='1.1.0';
 const API='https://luasforecasts.rpa.ie/xml/get.ashx';
 const STORAGE_KEY='vibecode-luas-live-v1';
 const DEFAULT_QUERIES=[{id:'trinity-brides-glen',stopCode:'tri',stopName:'Trinity',direction:'Outbound',destination:'Brides Glen'}];
 const FALLBACK_STOPS=[
-  ['The Point','tpt'],['Spencer Dock','sdk'],['Mayor Square - NCI','msq'],["George's Dock",'gdk'],['Connolly','con'],['Busáras','bus'],['Abbey Street','abb'],['Jervis','jer'],['Four Courts','fo​​u'],['Smithfield','smi'],['Museum','mus'],['Heuston','heu'],["James's",'jam'],['Fatima','fat'],['Rialto','ria'],['Suir Road','sui'],['Goldenbridge','gol'],['Drimnagh','dri'],['Blackhorse','bla'],['Bluebell','blu'],['Kylemore','kyl'],['Red Cow','red'],['Kingswood','kin'],['Belgard','bel'],['Cookstown','coo'],['Hospital','hos'],['Tallaght','tal'],['Fettercairn','fet'],['Cheeverstown','che'],['Citywest Campus','cit'],['Fortunestown','for'],['Saggart','sag'],['Broombridge','bro'],['Cabra','cab'],['Phibsborough','phi'],['Grangegorman','gra'],['Broadstone - University','brd'],['Dominick','dom'],['Parnell','par'],["O'Connell - Upper",'ocu'],["O'Connell - GPO",'ocg'],['Marlborough','mar'],['Westmoreland','wes'],['Trinity','tri'],['Dawson','daw'],["St. Stephen's Green",'sti'],['Harcourt','har'],['Charlemont','cha'],['Ranelagh','ran'],['Beechwood','bee'],['Cowper','cow'],['Milltown','mil'],['Windy Arbour','win'],['Dundrum','dun'],['Balally','bal'],['Kilmacud','kil'],['Stillorgan','sti2'],['Sandyford','san'],['Central Park','cen'],['Glencairn','gln'],['The Gallops','gal'],['Leopardstown Valley','leo'],['Ballyogan Wood','bal2'],['Carrickmines','car'],['Laughanstown','lau'],['Cherrywood','che2'],['Brides Glen','bri']
+  ['The Point','tpt'],['Spencer Dock','sdk'],['Mayor Square - NCI','msq'],["George's Dock",'gdk'],['Connolly','con'],['Busáras','bus'],['Abbey Street','abb'],['Jervis','jer'],['Four Courts','fou'],['Smithfield','smi'],['Museum','mus'],['Heuston','heu'],["James's",'jam'],['Fatima','fat'],['Rialto','ria'],['Suir Road','sui'],['Goldenbridge','gol'],['Drimnagh','dri'],['Blackhorse','bla'],['Bluebell','blu'],['Kylemore','kyl'],['Red Cow','red'],['Kingswood','kin'],['Belgard','bel'],['Cookstown','coo'],['Hospital','hos'],['Tallaght','tal'],['Fettercairn','fet'],['Cheeverstown','che'],['Citywest Campus','cit'],['Fortunestown','for'],['Saggart','sag'],['Broombridge','bro'],['Cabra','cab'],['Phibsborough','phi'],['Grangegorman','gra'],['Broadstone - University','brd'],['Dominick','dom'],['Parnell','par'],["O'Connell - Upper",'ocu'],["O'Connell - GPO",'ocg'],['Marlborough','mar'],['Westmoreland','wes'],['Trinity','tri'],['Dawson','daw'],["St. Stephen's Green",'sti'],['Harcourt','har'],['Charlemont','cha'],['Ranelagh','ran'],['Beechwood','bee'],['Cowper','cow'],['Milltown','mil'],['Windy Arbour','win'],['Dundrum','dun'],['Balally','bal'],['Kilmacud','kil'],['Stillorgan','sti2'],['Sandyford','san'],['Central Park','cen'],['Glencairn','gln'],['The Gallops','gal'],['Leopardstown Valley','leo'],['Ballyogan Wood','bal2'],['Carrickmines','car'],['Laughanstown','lau'],['Cherrywood','che2'],['Brides Glen','bri']
 ].map(([name,code])=>({name,code}));
 
 const boards=document.querySelector('#boards');
@@ -15,14 +16,38 @@ const directionSelect=document.querySelector('#direction-select');
 const destinationInput=document.querySelector('#destination-input');
 const networkStatus=document.querySelector('#network-status');
 const networkDot=document.querySelector('#network-dot');
+const versionLabel=document.querySelector('#app-version');
 let queries=loadQueries();
 let stops=[];
+
+if(versionLabel)versionLabel.textContent=`v${APP_VERSION}`;
 
 function loadQueries(){try{const value=JSON.parse(localStorage.getItem(STORAGE_KEY));return Array.isArray(value)&&value.length?value:DEFAULT_QUERIES}catch{return DEFAULT_QUERIES}}
 function saveQueries(){localStorage.setItem(STORAGE_KEY,JSON.stringify(queries))}
 function escapeText(value=''){return String(value).trim()}
 function parseXML(text){const xml=new DOMParser().parseFromString(text,'application/xml');if(xml.querySelector('parsererror'))throw new Error('The Luas feed returned invalid data.');return xml}
-async function fetchXML(params){const url=new URL(API);Object.entries({...params,encrypt:'false'}).forEach(([key,value])=>url.searchParams.set(key,value));const response=await fetch(url,{cache:'no-store'});if(!response.ok)throw new Error(`Luas feed error (${response.status})`);return parseXML(await response.text())}
+function buildApiUrl(params){const url=new URL(API);Object.entries({...params,encrypt:'false'}).forEach(([key,value])=>url.searchParams.set(key,value));return url.toString()}
+
+async function requestText(url){
+  const response=await fetch(url,{cache:'no-store',headers:{Accept:'application/xml,text/xml,text/plain,*/*'}});
+  if(!response.ok)throw new Error(`Feed request failed (${response.status})`);
+  return response.text();
+}
+
+async function fetchXML(params){
+  const target=buildApiUrl(params);
+  const candidates=[
+    target,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`,
+    `https://corsproxy.io/?url=${encodeURIComponent(target)}`
+  ];
+  let lastError;
+  for(const candidate of candidates){
+    try{return parseXML(await requestText(candidate))}
+    catch(error){lastError=error}
+  }
+  throw new Error(lastError?.message||'Could not reach the Luas live feed.');
+}
 
 async function loadStops(){
   try{
