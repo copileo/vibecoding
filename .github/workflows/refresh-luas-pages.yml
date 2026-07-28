@@ -1,0 +1,83 @@
+name: Refresh Luas data and Pages
+
+on:
+  workflow_dispatch:
+  schedule:
+    # GitHub cron uses UTC. These windows cover 05:30-01:30 Europe/Dublin
+    # in both winter and summer; the local-time guard below enforces the limit.
+    - cron: '2-59/5 4-23 * * *'
+    - cron: '2-59/5 0-1 * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-luas-refresh
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check Dublin operating window
+        id: window
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "active=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          local_time=$(TZ=Europe/Dublin date +%H%M)
+          local_time=$((10#$local_time))
+          if (( local_time >= 530 || local_time <= 130 )); then
+            echo "active=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "Outside the 05:30-01:30 Europe/Dublin collection window."
+          fi
+
+      - name: Checkout
+        if: steps.window.outputs.active == 'true'
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        if: steps.window.outputs.active == 'true'
+        uses: actions/configure-pages@v5
+
+      - name: Build static site
+        if: steps.window.outputs.active == 'true'
+        shell: bash
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp index.html _site/
+          for file in manifest.webmanifest icon.svg sw.js; do
+            [[ -f "$file" ]] && cp "$file" _site/
+          done
+          cp -R apps _site/apps
+          touch _site/.nojekyll
+
+      - name: Collect Luas forecasts
+        if: steps.window.outputs.active == 'true'
+        env:
+          LUAS_OUTPUT_DIR: _site/luas-data
+        run: node scripts/update-luas-data.mjs
+
+      - name: Upload Pages artifact
+        if: steps.window.outputs.active == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy Pages
+        if: steps.window.outputs.active == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4
