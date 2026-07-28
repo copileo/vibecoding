@@ -1,6 +1,16 @@
-name: Refresh Luas data and Pages
+name: Deploy GitHub Pages
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - index.html
+      - manifest.webmanifest
+      - icon.svg
+      - sw.js
+      - apps/**
+      - .github/workflows/refresh-luas-pages.yml
   workflow_dispatch:
 
 permissions:
@@ -9,11 +19,11 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-luas-refresh
-  cancel-in-progress: false
+  group: github-pages
+  cancel-in-progress: true
 
 jobs:
-  refresh:
+  deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     environment:
@@ -21,9 +31,15 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - run: |
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build static site
+        shell: bash
+        run: |
           rm -rf _site
           mkdir -p _site
           cp index.html _site/
@@ -32,11 +48,12 @@ jobs:
           done
           cp -R apps _site/apps
           touch _site/.nojekyll
-      - env:
-          LUAS_OUTPUT_DIR: _site/luas-data
-        run: node scripts/update-luas-data.mjs
-      - uses: actions/upload-pages-artifact@v3
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: _site
-      - id: deployment
+
+      - name: Deploy Pages
+        id: deployment
         uses: actions/deploy-pages@v4
