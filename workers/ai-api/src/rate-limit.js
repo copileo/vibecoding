@@ -1,0 +1,3 @@
+import{errors}from'./errors.js';
+const buckets=new Map();
+export function checkRateLimit(key,config){const now=Date.now(),windowMs=config.rateWindow*1000;let bucket=buckets.get(key);if(!bucket||now>=bucket.resetAt){bucket={count:0,resetAt:now+windowMs};buckets.set(key,bucket)}bucket.count++;if(bucket.count>config.rateLimit){const error=errors.rate();error.retryAfter=Math.max(1,Math.ceil((bucket.resetAt-now)/1000));throw error}return{remaining:Math.max(0,config.rateLimit-bucket.count),resetAt:bucket.resetAt}}
