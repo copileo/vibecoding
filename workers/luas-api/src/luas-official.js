@@ -57,9 +57,9 @@ function parseStopCatalog(xml){
 
 function resolveOfficialCode(appCode,catalog){
  const override=KNOWN_CODE_OVERRIDES[appCode];if(override&&catalog.some(stop=>stop.code===override))return override;
- if(catalog.some(stop=>stop.code===appCode))return appCode;
  const appName=APP_STOPS.find(([code])=>code===appCode)?.[1]||'';const wanted=normaliseName(appName);
  const exact=catalog.find(stop=>normaliseName(stop.name)===wanted);if(exact)return exact.code;
+ if(catalog.some(stop=>stop.code===appCode))return appCode;
  const compatible=catalog.find(stop=>normaliseName(stop.name).includes(wanted)||wanted.includes(normaliseName(stop.name)));if(compatible)return compatible.code;
  return override||appCode;
 }
@@ -74,7 +74,7 @@ function parseOfficialXml(xml,code,officialCode){
  const directionPattern=/<direction\b([^>]*)>([\s\S]*?)<\/direction>/gi;let directionMatch;
  while((directionMatch=directionPattern.exec(xml))){const direction=normaliseDirection(attribute(directionMatch[1],'name'));const tramPattern=/<tram\b([^>]*?)(?:\/?>)/gi;let tramMatch;while((tramMatch=tramPattern.exec(directionMatch[2]))){const dueRaw=attribute(tramMatch[1],'dueMins');const destination=normaliseDestination(attribute(tramMatch[1],'destination')||'Luas');const minutes=/^due$/i.test(dueRaw)?0:Number(dueRaw);if(!Number.isFinite(minutes)||minutes<0||minutes>180)continue;departures.push({destination,direction,minutes,scheduledAt:new Date(baseTime+minutes*60000).toISOString(),tripId:`official-${officialCode}-${direction}-${destination}-${minutes}`,route:'LUAS'});}}
  departures.sort((a,b)=>a.minutes-b.minutes);
- return {apiVersion:1,workerVersion:'1.8.3',provider:'luas-official-avls',stop:{code,name:stopName,officialCode},updated,message,departures,diagnostics:{source:'official-luas-pid',matches:departures.length,createdRaw,officialStopCode:officialCode}};
+ return {apiVersion:1,workerVersion:'1.8.4',provider:'luas-official-avls',stop:{code,name:stopName,officialCode},updated,message,departures,diagnostics:{source:'official-luas-pid',matches:departures.length,createdRaw,officialStopCode:officialCode}};
 }
 function parseDublinLocal(value){const raw=String(value||'').trim();if(!raw)return null;if(/[zZ]$|[+-]\d{2}:?\d{2}$/.test(raw)){const date=new Date(raw);return Number.isNaN(date.getTime())?null:date;}let match=raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{1,2}):(\d{2}):(\d{2})/);if(!match)match=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[T\s](\d{1,2}):(\d{2}):(\d{2})/);if(!match)return null;const isoFirst=/^\d{4}-/.test(raw);const year=Number(isoFirst?match[1]:match[3]),month=Number(match[2]),day=Number(isoFirst?match[3]:match[1]),hour=Number(match[4]),minute=Number(match[5]),second=Number(match[6]);const utcGuess=Date.UTC(year,month-1,day,hour,minute,second);const parts=new Intl.DateTimeFormat('en-IE',{timeZone:'Europe/Dublin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).formatToParts(new Date(utcGuess));const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));const represented=Date.UTC(Number(values.year),Number(values.month)-1,Number(values.day),Number(values.hour),Number(values.minute),Number(values.second));return new Date(utcGuess-(represented-utcGuess));}
 function attribute(source,name){const match=String(source).match(new RegExp(`${name}\\s*=\\s*(["'])(.*?)\\1`,'i'));return match?decodeXml(match[2]):'';}
