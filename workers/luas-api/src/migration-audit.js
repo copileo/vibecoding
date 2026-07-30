@@ -35,14 +35,17 @@ async function validateStop(appCode,expectedName,ctx){
   const directions=[...new Set((data.departures||[]).map(item=>item.direction).filter(Boolean))];
   const invalidDepartures=(data.departures||[]).filter(item=>!validDeparture(item));
   const issues=[];
+  const fatalIssues=[];
   if(data.provider!=='luas-official-avls')issues.push(`Unexpected provider: ${data.provider||'missing'}`);
-  if(!data.stop?.officialCode)issues.push('Missing official stop code.');
-  if(!namesCompatible(data.stop?.name,expectedName))issues.push(`Official name differs: ${data.stop?.name||'missing'}`);
+  if(!data.stop?.officialCode)fatalIssues.push('Missing official stop code.');
+  if(!namesCompatible(data.stop?.name,expectedName))fatalIssues.push(`Official name differs: ${data.stop?.name||'missing'}`);
   if(updatedAgeSeconds===null)issues.push('Invalid updated timestamp.');
   else if(updatedAgeSeconds>MAX_UPDATED_AGE_SECONDS)issues.push(`Forecast is ${updatedAgeSeconds}s old.`);
   if(!Array.isArray(data.departures))issues.push('Departures is not an array.');
   if(invalidDepartures.length)issues.push(`${invalidDepartures.length} invalid departure(s).`);
-  return {appCode,expectedName,officialCode:data.stop?.officialCode||null,officialName:data.stop?.name||null,status:issues.length?'warning':'passed',provider:data.provider||null,cacheStatus:data.cache?.status||null,updated:data.updated||null,updatedAgeSeconds,directions,departureCount:data.departures?.length||0,invalidDepartureCount:invalidDepartures.length,durationMs:Date.now()-began,issues};
+  const allIssues=[...fatalIssues,...issues];
+  const status=fatalIssues.length?'failed':issues.length?'warning':'passed';
+  return {appCode,expectedName,officialCode:data.stop?.officialCode||null,officialName:data.stop?.name||null,status,provider:data.provider||null,cacheStatus:data.cache?.status||null,updated:data.updated||null,updatedAgeSeconds,directions,departureCount:data.departures?.length||0,invalidDepartureCount:invalidDepartures.length,durationMs:Date.now()-began,issues:allIssues};
  }catch(error){
   return {appCode,expectedName,officialCode:null,officialName:null,status:'failed',provider:null,cacheStatus:null,updated:null,updatedAgeSeconds:null,directions:[],departureCount:0,invalidDepartureCount:0,durationMs:Date.now()-began,issues:[error instanceof Error?error.message:String(error)]};
  }
