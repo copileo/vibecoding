@@ -1,0 +1,7 @@
+import test from'node:test';import assert from'node:assert/strict';import{getConfig}from'../src/config.js';import{validateChat,validateEmbedding}from'../src/validation.js';import{cacheKey}from'../src/cache.js';
+const config=getConfig({DEFAULT_MODEL:'gpt-5',SUPPORTED_MODELS:'[{"id":"gpt-5","capabilities":["chat","responses"]},{"id":"text-embedding-3-small","capabilities":["embeddings"]}]'});
+test('configuration parses model capabilities',()=>{assert.equal(config.models.length,2);assert.equal(config.defaultModel,'gpt-5')});
+test('chat validation applies default model',()=>{const value=validateChat({messages:[{role:'user',content:'hello'}]},config);assert.equal(value.model,'gpt-5')});
+test('chat validation rejects invalid role',()=>assert.throws(()=>validateChat({messages:[{role:'root',content:'hello'}]},config),/messages/i));
+test('embedding validation accepts arrays',()=>{const value=validateEmbedding({model:'text-embedding-3-small',input:['a','b']},config);assert.equal(value.input.length,2)});
+test('cache key is deterministic and hides prompt',async()=>{const first=await cacheKey('https://example.com/embeddings','embedding',{input:'secret text',model:'x'});const second=await cacheKey('https://example.com/embeddings','embedding',{model:'x',input:'secret text'});assert.equal(first.url,second.url);assert.equal(first.url.includes('secret'),false)});
