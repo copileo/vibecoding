@@ -17,8 +17,10 @@ export default {
    catch(error){return Response.json({error:'Stop-code audit failed.',detail:error instanceof Error?error.message:String(error)},{status:502,headers:{...corsHeaders(),'Cache-Control':'no-store'}});}
   }
   if(request.method==='GET'&&url.pathname==='/debug/migration'){
-   try{return Response.json(await auditForecastMigration(ctx),{headers:{...corsHeaders(),'Cache-Control':'no-store'}});}
-   catch(error){return Response.json({error:'Forecast migration audit failed.',detail:error instanceof Error?error.message:String(error)},{status:502,headers:{...corsHeaders(),'Cache-Control':'no-store'}});}
+   try{
+    const data=await auditForecastMigration(ctx,{offset:url.searchParams.get('offset'),limit:url.searchParams.get('limit')});
+    return Response.json(data,{headers:{...corsHeaders(),'Cache-Control':'no-store'}});
+   }catch(error){return Response.json({error:'Forecast migration audit failed.',detail:error instanceof Error?error.message:String(error)},{status:502,headers:{...corsHeaders(),'Cache-Control':'no-store'}});}
   }
   if(request.method==='GET'&&(url.pathname==='/forecast'||url.pathname==='/v1/forecast')){
    const stop=(url.searchParams.get('stop')||'').toLowerCase();
