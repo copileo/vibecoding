@@ -1,4 +1,4 @@
-const CACHE="vibecode-hub-v4";
+const CACHE="vibecode-hub-v5";
 const ASSETS=["./","./index.html","./manifest.webmanifest","./icon.svg"];
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));self.skipWaiting()});
 self.addEventListener("activate",event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE&&!key.startsWith("vibecode-habitos-")&&!key.startsWith("vibecode-cloud-ai-")&&!key.startsWith("vibecode-llm-offline-")&&!key.startsWith("vibecode-despesas-viagem-")&&!key.startsWith("vibecode-cartas-tcg-")&&!key.startsWith("luas-live-")).map(key=>caches.delete(key)))));self.clients.claim()});
