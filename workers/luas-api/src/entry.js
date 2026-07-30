@@ -1,6 +1,6 @@
 import forecastWorker from './index.js';
 import {handlePushRequest,ReminderScheduler} from './push-reminders.js';
-import {getOfficialForecast} from './luas-official.js';
+import {getOfficialForecast,auditOfficialStops} from './luas-official.js';
 
 export {ReminderScheduler};
 
@@ -11,6 +11,10 @@ export default {
   const url=new URL(request.url);
   if(url.pathname.startsWith('/push/'))return handlePushRequest(request,env);
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:corsHeaders()});
+  if(request.method==='GET'&&url.pathname==='/debug/stops'){
+   try{return Response.json(await auditOfficialStops(ctx),{headers:{...corsHeaders(),'Cache-Control':'no-store'}});}
+   catch(error){return Response.json({error:'Stop-code audit failed.',detail:error instanceof Error?error.message:String(error)},{status:502,headers:{...corsHeaders(),'Cache-Control':'no-store'}});}
+  }
   if(request.method==='GET'&&(url.pathname==='/forecast'||url.pathname==='/v1/forecast')){
    const stop=(url.searchParams.get('stop')||'').toLowerCase();
    try{
