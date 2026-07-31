@@ -58,9 +58,10 @@ export class CopileoAI {
     return this.#request('/chat', { method: 'POST', body: payload });
   }
 
-  async chatWithImage({ prompt, image, model } = {}) {
+  async chatWithImage({ prompt, image, model, detail = 'auto' } = {}) {
     if (typeof prompt !== 'string' || !prompt.trim()) throw new TypeError('prompt is required.');
-    const imagePart = await createImagePart(image);
+    if (!['auto', 'low', 'high'].includes(detail)) throw new TypeError('detail must be auto, low, or high.');
+    const imagePart = await createImagePart(image, detail);
     return this.chat({
       model: model || this.defaultModel,
       messages: [{
@@ -129,17 +130,21 @@ export class CopileoAI {
   }
 }
 
-export async function createImagePart(image) {
+export async function createImagePart(image, detail = 'auto') {
+  if (!['auto', 'low', 'high'].includes(detail)) throw new TypeError('detail must be auto, low, or high.');
+
   if (typeof image === 'string') {
-    if (/^https:\/\//i.test(image)) return { type: 'input_image', image_url: image };
-    if (/^data:image\/(jpeg|png|webp);base64,/i.test(image)) return { type: 'input_image', image_base64: image };
+    if (/^https:\/\//i.test(image)) return { type: 'input_image', image_url: image, detail };
+    if (/^data:image\/(jpeg|png|webp);base64,/i.test(image)) {
+      return { type: 'input_image', image_url: image, detail };
+    }
     throw new TypeError('Image strings must be HTTPS URLs or JPEG, PNG, or WebP data URLs.');
   }
 
   if (typeof Blob !== 'undefined' && image instanceof Blob) {
     if (!ALLOWED_IMAGE_TYPES.has(image.type)) throw new TypeError('Only JPEG, PNG, and WebP images are supported.');
     if (!image.size || image.size > MAX_IMAGE_BYTES) throw new TypeError('The image must be at most 3 MB.');
-    return { type: 'input_image', image_base64: await blobToDataUrl(image) };
+    return { type: 'input_image', image_url: await blobToDataUrl(image), detail };
   }
 
   throw new TypeError('image must be a Blob, File, HTTPS URL, or data URL.');
