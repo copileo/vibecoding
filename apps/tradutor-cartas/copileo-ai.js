@@ -1,5 +1,5 @@
 // Deployment copy synchronized from packages/copileo-ai/src/index.js.
-const DEFAULT_GATEWAY_URL = 'https://vibecoding-ai-api.copileo.workers.dev';
+const DEFAULT_GATEWAY_URL = 'https://vibecode-ai-api.copileo.workers.dev';
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
