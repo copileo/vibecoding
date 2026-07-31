@@ -85,9 +85,16 @@ export function createOpenAI(env, config) {
 
 function mapContent(content) {
   if (typeof content === 'string') return content;
-  return content.map(part => part.type === 'input_text'
-    ? { type: 'input_text', text: part.text }
-    : { type: 'input_image', image_url: part.image_url });
+  return content.map(part => {
+    if (part.type === 'input_text') {
+      return { type: 'input_text', text: part.text };
+    }
+    return {
+      type: 'input_image',
+      image_url: part.image_url,
+      detail: part.detail || 'auto',
+    };
+  });
 }
 
 function stripControl(value) {
