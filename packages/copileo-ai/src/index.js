@@ -27,7 +27,7 @@ export class CopileoAI {
   constructor({
     gatewayUrl = DEFAULT_GATEWAY_URL,
     credentialsProvider = new AnonymousCredentialsProvider(),
-    fetchImpl = globalThis.fetch,
+    fetchImpl = globalThis.fetch?.bind(globalThis),
     timeoutMs = 30_000,
     appId,
     defaultModel,
