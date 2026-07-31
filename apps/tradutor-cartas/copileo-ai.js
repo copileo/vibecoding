@@ -1,5 +1,5 @@
 // Deployment copy synchronized from packages/copileo-ai/src/index.js.
-const DEFAULT_GATEWAY_URL = 'https://vibecode-ai-api.copileo.workers.dev';
+const DEFAULT_GATEWAY_URL = 'https://vibecoding-ai-api.copileo.workers.dev';
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
@@ -25,7 +25,7 @@ export class AnonymousCredentialsProvider {
 }
 
 export class CopileoAI {
-  constructor({ gatewayUrl = DEFAULT_GATEWAY_URL, credentialsProvider = new AnonymousCredentialsProvider(), fetchImpl = globalThis.fetch, timeoutMs = 30000, appId, defaultModel } = {}) {
+  constructor({ gatewayUrl = DEFAULT_GATEWAY_URL, credentialsProvider = new AnonymousCredentialsProvider(), fetchImpl = globalThis.fetch?.bind(globalThis), timeoutMs = 30000, appId, defaultModel } = {}) {
     if (typeof fetchImpl !== 'function') throw new TypeError('A fetch implementation is required.');
     if (!credentialsProvider || typeof credentialsProvider.getToken !== 'function') throw new TypeError('credentialsProvider must implement getToken().');
     this.gatewayUrl = gatewayUrl.replace(/\/$/, '');
