@@ -4,6 +4,7 @@ const MAX_MESSAGES = 100;
 const MAX_TEXT_CHARS = 50_000;
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const ALLOWED_IMAGE_DETAIL = new Set(['auto', 'low', 'high']);
 
 export async function readJson(request, maxBytes) {
   const type = request.headers.get('content-type') || '';
@@ -134,25 +135,30 @@ function validateImagePart(part) {
     throw errors.invalid('Provide only one image source.');
   }
 
-  if (part.image_url !== undefined) {
+  const detail = part.detail === undefined ? 'auto' : part.detail;
+  if (!ALLOWED_IMAGE_DETAIL.has(detail)) {
+    throw errors.invalid('Image detail must be auto, low, or high.');
+  }
+
+  if (/^https:\/\//i.test(source)) {
     let url;
     try { url = new URL(source); } catch { throw errors.invalid('image_url must be a valid HTTPS URL.'); }
     if (url.protocol !== 'https:') throw errors.invalid('image_url must use HTTPS.');
-    return { type: 'input_image', image_url: source };
+    return { type: 'input_image', image_url: source, detail };
   }
 
   const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(source);
   if (!match || !ALLOWED_IMAGE_MIME.has(match[1])) {
-    throw errors.invalid('image_base64 must be a JPEG, PNG, or WebP data URL.');
+    throw errors.invalid('Image data must be a JPEG, PNG, or WebP data URL.');
   }
 
-  const padding = (match[2].match(/=*$/)?.[0].length || 0);
+  const padding = match[2].match(/=*$/)?.[0].length || 0;
   const bytes = Math.floor((match[2].length * 3) / 4) - padding;
   if (bytes <= 0 || bytes > MAX_IMAGE_BYTES) {
     throw errors.invalid('The image exceeds the 3 MB limit.');
   }
 
-  return { type: 'input_image', image_url: source };
+  return { type: 'input_image', image_url: source, detail };
 }
 
 function assertObject(value) {
