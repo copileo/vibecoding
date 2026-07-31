@@ -37,9 +37,13 @@
   <script>
     try {
       const key = 'vibecode-card-translator-v1';
+      const correctUrl = 'https://vibecode-ai-api.copileo.workers.dev';
+      const oldUrl = 'https://vibecoding-ai-api.copileo.workers.dev';
       const value = JSON.parse(localStorage.getItem(key) || 'null');
-      if (value && value.url === 'https://vibecoding-ai-api.copileo.workers.dev') {
-        value.url = 'https://vibecode-ai-api.copileo.workers.dev';
+      if (!value) {
+        localStorage.setItem(key, JSON.stringify({ url: correctUrl, token: '', model: 'gpt-5.4-nano', saveImages: true }));
+      } else if (!value.url || value.url === oldUrl) {
+        value.url = correctUrl;
         localStorage.setItem(key, JSON.stringify(value));
       }
     } catch {}
