@@ -1,10 +1,12 @@
+const DEFAULT_ALLOWED_ORIGINS = 'https://copileo.github.io';
+
 export function getConfig(env = {}) {
   const models = parseModels(env.SUPPORTED_MODELS || env.DEFAULT_MODEL || 'gpt-5.4-nano');
   return {
-    version: env.AI_API_VERSION || '1.0.0',
+    version: env.AI_API_VERSION || '1.0.1',
     defaultModel: env.DEFAULT_MODEL || models[0]?.id || 'gpt-5.4-nano',
     models,
-    origins: String(env.CORS_ALLOWED_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean),
+    origins: String(env.CORS_ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS).split(',').map(value => value.trim()).filter(Boolean),
     maxBytes: number(env.MAX_REQUEST_BYTES, 5 * 1024 * 1024),
     timeoutMs: number(env.PROVIDER_TIMEOUT_MS, 30_000),
     rateLimit: number(env.RATE_LIMIT_REQUESTS, 60),
