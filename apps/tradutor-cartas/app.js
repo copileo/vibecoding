@@ -2,9 +2,9 @@ import {
   CopileoAI,
   CopileoAIError,
   StaticTokenCredentialsProvider,
-} from '../../packages/copileo-ai/src/index.js';
+} from './copileo-ai.js';
 
-const APP_VERSION='0.1.1';const STORE='vibecode-card-translator-v1';const HISTORY='vibecode-card-translator-history-v1';const DEFAULT_URL='https://vibecoding-ai-api.copileo.workers.dev';const $=id=>document.getElementById(id);let settings=load(STORE,{url:DEFAULT_URL,token:'',model:'gpt-5.4-nano',saveImages:true});let selectedImage=null;let selectedUrl=null;let currentResult=null;
+const APP_VERSION='0.1.2';const STORE='vibecode-card-translator-v1';const HISTORY='vibecode-card-translator-history-v1';const DEFAULT_URL='https://vibecoding-ai-api.copileo.workers.dev';const $=id=>document.getElementById(id);let settings=load(STORE,{url:DEFAULT_URL,token:'',model:'gpt-5.4-nano',saveImages:true});let selectedImage=null;let selectedUrl=null;let currentResult=null;
 
 const SYSTEM_PROMPT=`You translate photographed fantasy board-game cards from English into Brazilian Portuguese for immediate use during gameplay.
 Priorities: preserve exact mechanical meaning; make Portuguese quick to read; preserve every choice, condition, number, card code, identifier, arrow and ordering; preserve narrative tone.
@@ -14,10 +14,11 @@ Return valid JSON only, with no Markdown, using exactly this shape:
 {"title":{"original":"","translated":""},"cardId":"","side":"","sections":[{"type":"narrative|dialogue|rules|choice|identifier|other","original":"","translated":""}],"warnings":[{"type":"unreadable|uncertain|unknown_symbol","message":""}]}
 Before answering, verify that numbers, codes and rules match the image.`;
 
-init();
+try{init()}catch(error){showBootError(error)}
 function init(){ $('version').textContent=`v${APP_VERSION}`; bind(); if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{})); show(settings.token?'home':'setup'); renderRecent(); }
+function showBootError(error){const setup=$('setup');if(setup){setup.hidden=false;const status=$('setup-status');if(status)status.textContent=`Falha ao iniciar o app: ${error?.message||'erro desconhecido'}. Atualize a página.`}console.error(error)}
 function bind(){ $('camera-input').addEventListener('change',pick);$('gallery-input').addEventListener('change',pick);$('retake').onclick=openCamera;$('translate').onclick=translate;$('another').onclick=openCamera;$('large-text').onclick=()=>{$('translation').classList.toggle('large')};$('test-api').onclick=testConnection;$('save-settings').onclick=saveSetup;$('settings-open').onclick=openSettings;$('settings-save').onclick=saveDialog;$('forget-token').onclick=forgetToken;$('clear-history').onclick=clearHistory;window.addEventListener('unhandledrejection',e=>alert(messageFor(e.reason)));}
-function show(id){document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;scrollTo(0,0)}
+function show(id){document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;window.scrollTo(0,0)}
 async function pick(event){const file=event.target.files&&event.target.files[0];event.target.value='';if(!file)return;try{selectedImage=await prepareImage(file);if(selectedUrl)URL.revokeObjectURL(selectedUrl);selectedUrl=URL.createObjectURL(selectedImage);$('preview').src=selectedUrl;$('loading-preview').src=selectedUrl;show('review')}catch(e){alert(messageFor(e))}}
 function openCamera(){show('home');setTimeout(()=>$('camera-input').click(),80)}
 async function prepareImage(file){if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Selecione uma imagem JPEG, PNG ou WebP.');const bitmap=await createImageBitmap(file);const max=1600;const scale=Math.min(1,max/Math.max(bitmap.width,bitmap.height));const canvas=document.createElement('canvas');canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Não foi possível preparar a imagem.');ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();let quality=.86,blob=await toBlob(canvas,quality);while(blob.size>2.85*1024*1024&&quality>.62){quality-=.08;blob=await toBlob(canvas,quality)}if(blob.size>3*1024*1024)throw new Error('A foto ficou grande demais. Tente aproximar mais a câmera.');return blob}
