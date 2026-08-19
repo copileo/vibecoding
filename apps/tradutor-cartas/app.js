@@ -47,6 +47,7 @@ function bind(){
   $('settings-save').onclick=saveDialog;
   $('forget-token').onclick=forgetToken;
   $('clear-history').onclick=clearHistory;
+  $('clear-history-settings').onclick=clearHistory;
   $('refresh-storage').onclick=refreshStorageDiagnostics;
   document.querySelectorAll('[data-review-side]').forEach(b=>b.onclick=()=>showReviewSide(b.dataset.reviewSide));
   document.querySelectorAll('[data-result-side]').forEach(b=>b.onclick=()=>showResultSide(b.dataset.resultSide));
@@ -135,11 +136,6 @@ function openDb(){
   });
 }
 
-async function withStore(mode,fn){
-  const db=await openDb();
-  try{return await new Promise((resolve,reject)=>{const tx=db.transaction(HISTORY_STORE,mode),store=tx.objectStore(HISTORY_STORE);let result;try{result=fn(store,tx)}catch(e){reject(e);return}tx.oncomplete=()=>resolve(result);tx.onerror=()=>reject(tx.error||Error('Falha no armazenamento.'));tx.onabort=()=>reject(tx.error||Error('Operação de armazenamento cancelada.'))})}finally{db.close()}
-}
-
 function requestResult(req){return new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
 
 async function historyGetAll(){
@@ -147,22 +143,21 @@ async function historyGetAll(){
   try{const tx=db.transaction(HISTORY_STORE,'readonly');const items=await requestResult(tx.objectStore(HISTORY_STORE).getAll());return items.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))}finally{db.close()}
 }
 
+async function waitTransaction(tx){return new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error('Falha no armazenamento.'));tx.onabort=()=>reject(tx.error||Error('Operação de armazenamento cancelada.'))})}
+
 async function historyPut(item){
   const db=await openDb();
-  try{
-    const tx=db.transaction(HISTORY_STORE,'readwrite'),store=tx.objectStore(HISTORY_STORE);store.put(item);
-    await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)});
-  }finally{db.close()}
+  try{const tx=db.transaction(HISTORY_STORE,'readwrite');tx.objectStore(HISTORY_STORE).put(item);await waitTransaction(tx)}finally{db.close()}
   const all=await historyGetAll();
   if(all.length>HISTORY_LIMIT){
     const db2=await openDb();
-    try{const tx=db2.transaction(HISTORY_STORE,'readwrite'),store=tx.objectStore(HISTORY_STORE);all.slice(HISTORY_LIMIT).forEach(x=>store.delete(x.id));await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}finally{db2.close()}
+    try{const tx=db2.transaction(HISTORY_STORE,'readwrite'),store=tx.objectStore(HISTORY_STORE);all.slice(HISTORY_LIMIT).forEach(x=>store.delete(x.id));await waitTransaction(tx)}finally{db2.close()}
   }
 }
 
 async function historyClear(){
   const db=await openDb();
-  try{const tx=db.transaction(HISTORY_STORE,'readwrite');tx.objectStore(HISTORY_STORE).clear();await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}finally{db.close()}
+  try{const tx=db.transaction(HISTORY_STORE,'readwrite');tx.objectStore(HISTORY_STORE).clear();await waitTransaction(tx)}finally{db.close()}
 }
 
 async function saveHistory(result){
@@ -238,4 +233,4 @@ function formatBytes(n){if(n<1024)return`${n} B`;if(n<1024*1024)return`${(n/1024
 function messageFor(e){if(e instanceof CopileoAIError){if(e.status===401)return'Token inválido ou expirado.';if(e.code==='TIMEOUT')return'A API demorou demais.';if(e.code==='NETWORK_ERROR')return'Não foi possível acessar a AI API.'}return e?.message||'Erro inesperado.'}
 function load(k,f){try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){console.warn('localStorage write failed',e);return false}}
-function esc(v){return String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function esc(v){return String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
