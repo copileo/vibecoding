@@ -1,0 +1,69 @@
+name: Luas migration audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Public Worker base URL
+        required: false
+        default: https://vibecoding.copileo.workers.dev
+      batch_size:
+        description: Stops per Worker request (1-10)
+        required: false
+        default: '8'
+  schedule:
+    - cron: '17 5 * * *'
+  push:
+    branches:
+      - main
+    paths:
+      - 'workers/luas-api/src/**'
+      - 'workers/luas-api/scripts/audit-migration.mjs'
+      - '.github/workflows/luas-migration-audit.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: luas-migration-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Validate all Luas stops
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      LUAS_AUDIT_BASE_URL: ${{ inputs.base_url || 'https://vibecoding.copileo.workers.dev' }}
+      LUAS_AUDIT_BATCH_SIZE: ${{ inputs.batch_size || '8' }}
+      LUAS_AUDIT_RETRIES: '4'
+      LUAS_AUDIT_RETRY_DELAY_MS: '2000'
+      LUAS_AUDIT_OUTPUT_DIR: migration-audit-output
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Wait for Worker deployment
+        if: github.event_name == 'push'
+        run: sleep 30
+
+      - name: Run migration audit
+        id: audit
+        continue-on-error: true
+        run: node workers/luas-api/scripts/audit-migration.mjs
+
+      - name: Upload migration reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: luas-migration-audit-${{ github.run_number }}
+          path: migration-audit-output/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Fail when audit is incomplete
+        if: steps.audit.outcome != 'success'
+        run: |
+          echo 'The Luas migration audit reported failures or could not complete.' >&2
+          exit 1

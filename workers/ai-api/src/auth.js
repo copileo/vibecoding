@@ -1,0 +1,4 @@
+import{errors}from'./errors.js';
+export function authenticate(request,env){const expected=env.AI_API_BEARER_TOKEN;if(!expected)throw errors.internal();const header=request.headers.get('authorization')||'';const match=/^Bearer\s+(.+)$/i.exec(header);if(!match||!safeEqual(match[1],expected))throw errors.unauthorized();return hashIdentity(match[1])}
+function safeEqual(a,b){const x=new TextEncoder().encode(a),y=new TextEncoder().encode(b);if(x.length!==y.length)return false;let diff=0;for(let i=0;i<x.length;i++)diff|=x[i]^y[i];return diff===0}
+async function hashIdentity(value){const data=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return[...new Uint8Array(data)].slice(0,12).map(v=>v.toString(16).padStart(2,'0')).join('')}
