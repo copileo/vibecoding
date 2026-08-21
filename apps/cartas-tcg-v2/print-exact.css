@@ -1,0 +1,12 @@
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-page {
+    gap: 0 !important;
+    width: 189mm;
+    margin: 0 auto;
+  }
+}
