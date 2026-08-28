@@ -1,6 +1,6 @@
 import{CopileoAI,CopileoAIError,StaticTokenCredentialsProvider}from'./copileo-ai.js';
 
-const APP_VERSION='0.3.0';
+const APP_VERSION='0.4.0';
 const STORE='vibecode-card-translator-v1';
 const LEGACY_HISTORY='vibecode-card-translator-history-v2';
 const DB_NAME='vibecode-card-translator';
@@ -8,17 +8,19 @@ const DB_VERSION=1;
 const HISTORY_STORE='history';
 const HISTORY_LIMIT=30;
 const DEFAULT_URL='https://vibecoding-ai-api.copileo.workers.dev';
+const PHRASES_URL='https://raw.githubusercontent.com/fernandosivelli/ArydiaPhrases/main/Phrases';
 const $=id=>document.getElementById(id);
 
 let settings=load(STORE,{url:DEFAULT_URL,token:'',model:'gpt-5.4-nano'});
 let images={front:null,back:null};
 let urls={front:null,back:null};
 let reviewSide='front';
-let resultSide='front';
 let currentResult=null;
 let recentItems=[];
+let configuredPhrases=[];
+let phraseMatches=[];
 
-const PROMPT=`Translate the photographed board-game card from English into Brazilian Portuguese for immediate use during gameplay. Preserve exact rules, choices, numbers, codes, reading order and visible emphasis. Return valid JSON only: {"title":{"original":"","translated":""},"cardId":"","side":"","sections":[{"type":"narrative|dialogue|rules|choice|identifier|other","original":"","translated":"","originalSegments":[{"text":"","bold":false,"italic":false}],"translatedSegments":[{"text":"","bold":false,"italic":false}]}],"warnings":[{"type":"unreadable|uncertain|unknown_symbol","message":""}]}. Use segments when bold or italic formatting is visible. Do not invent emphasis or unreadable text.`;
+const PROMPT=`Translate the photographed board-game card from English into Brazilian Portuguese for immediate use during gameplay. Preserve exact rules, choices, numbers, codes, reading order and visible emphasis. Return valid JSON only: {"title":{"original":"","translated":""},"cardId":"","side":"","sections":[{"type":"narrative|dialogue|rules|choice|identifier|other","original":"","translated":"","linkKey":"","originalSegments":[{"text":"","bold":false,"italic":false}],"translatedSegments":[{"text":"","bold":false,"italic":false}]}],"warnings":[{"type":"unreadable|uncertain|unknown_symbol","message":""}]}. Use segments when bold or italic formatting is visible. For every front-side choice or option whose result is written on the back, assign a short stable linkKey (for example, "medicine", "cure", "other") to that front section. Assign the exact same linkKey to the matching back-side section. Do not add a separate instruction to see or refer to the back; the choices themselves open their matching back text. Do not invent emphasis, links or unreadable text.`;
 
 init().catch(showBootError);
 
@@ -29,6 +31,7 @@ async function init(){
   show(settings.token?'home':'setup');
   fillSetup();
   await migrateLegacyHistory();
+  configuredPhrases=await loadPhrases();
   await renderRecent();
 }
 
@@ -50,7 +53,6 @@ function bind(){
   $('clear-history-settings').onclick=clearHistory;
   $('refresh-storage').onclick=refreshStorageDiagnostics;
   document.querySelectorAll('[data-review-side]').forEach(b=>b.onclick=()=>showReviewSide(b.dataset.reviewSide));
-  document.querySelectorAll('[data-result-side]').forEach(b=>b.onclick=()=>showResultSide(b.dataset.resultSide));
 }
 
 function show(id){document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;scrollTo(0,0)}
@@ -93,7 +95,8 @@ async function translateBoth(){
     $('loading-label').textContent='Traduzindo frente…';out.front=await translateSide(images.front);
     if(images.back){$('loading-label').textContent='Traduzindo verso…';out.back=await translateSide(images.back)}
     currentResult={front:out.front,back:out.back,createdAt:new Date().toISOString()};
-    showResultSide('front');$('result-side-tabs').hidden=!out.back;show('result');
+    phraseMatches=findPhraseMatches(currentResult);
+    showResultSide();show('result');
     setPersistenceStatus('Salvando no histórico…','muted');
     saveHistory(currentResult).then(()=>setPersistenceStatus('',null)).catch(err=>{
       console.warn('History persistence failed',err);
@@ -110,19 +113,54 @@ async function translateSide(image){
   parsed.warnings=Array.isArray(parsed.warnings)?parsed.warnings:[];return parsed;
 }
 
-function showResultSide(side){
-  const data=currentResult?.[side];if(!data)return;resultSide=side;
-  document.querySelectorAll('[data-result-side]').forEach(b=>b.classList.toggle('active',b.dataset.resultSide===side));
+function showResultSide(){
+  const data=currentResult?.front;if(!data)return;
   $('result-title').textContent=data.title?.translated||data.cardId||'Tradução';
-  $('result-meta').textContent=[side==='front'?'Frente':'Verso',data.cardId,data.side&&`Lado ${data.side}`].filter(Boolean).join(' · ');
-  $('translation').innerHTML=data.sections.map(s=>`<section class="section ${safeType(s.type)}">${renderTranslated(s)}</section>`).join('');
+  $('result-meta').textContent=[currentResult.back?'Frente e verso':'Frente',data.cardId,data.side&&`Lado ${data.side}`].filter(Boolean).join(' · ');
+  $('translation').innerHTML=data.sections.map((s,index)=>`<section class="section ${safeType(s.type)}">${renderTranslated(s,currentResult.back,index)}</section>`).join('');
   $('original').innerHTML=data.sections.map(s=>`<section class="section">${renderOriginal(s)}</section>`).join('');
+  renderPhraseMatches();
   $('warnings').hidden=!data.warnings.length;$('warnings').innerHTML=data.warnings.map(w=>`<div>${esc(w.message||'Trecho incerto.')}</div>`).join('');
 }
 
-function renderTranslated(s){return renderSegments(s.translatedSegments)||paragraphs(s.translated)}
+async function loadPhrases(){
+  try{
+    const response=await fetch(`${PHRASES_URL}?v=${APP_VERSION}`,{cache:'no-store'});
+    if(!response.ok)throw Error(`Phrase list request failed with HTTP ${response.status}.`);
+    return [...new Set((await response.text()).split(/\r?\n/).map(phrase=>phrase.trim()).filter(Boolean))];
+  }catch(error){console.warn('Could not load shared phrase list',error);return[]}
+}
+function findPhraseMatches(result){
+  const source=[result?.front,result?.back].flatMap(card=>card?.sections||[]).flatMap(section=>[section.original,...(section.originalSegments||[]).map(segment=>segment.text)]).filter(Boolean).join('\n');
+  const normalisedSource=normalise(source);
+  return configuredPhrases.filter(phrase=>normalise(phrase)&&normalisedSource.includes(normalise(phrase))).map(phrase=>({phrase,detectedAt:result.createdAt}));
+}
+function renderPhraseMatches(){
+  const element=$('phrase-matches');element.hidden=!phraseMatches.length;
+  element.innerHTML=phraseMatches.length?`<p class="eyebrow">Frases correspondentes</p>${phraseMatches.map(match=>`<div class="phrase-match"><strong>${esc(match.phrase)}</strong><span>Detectada em ${esc(formatDate(match.detectedAt))}</span></div>`).join('')}`:'';
+}
+function formatDate(value){try{return new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(value))}catch{return String(value||'')}}
+
+function renderTranslated(s,back,index){
+  if(back&&s.type==='choice')return renderChoice(s,back,index);
+  return renderSegments(s.translatedSegments)||paragraphs(s.translated);
+}
 function renderOriginal(s){return renderSegments(s.originalSegments)||paragraphs(s.original)}
-function renderSegments(a){if(!Array.isArray(a)||!a.length)return'';return`<p>${a.map(x=>{let t=esc(x.text||'');if(x.bold)t=`<strong>${t}</strong>`;if(x.italic)t=`<em>${t}</em>`;return t}).join('')}</p>`}
+function renderSegments(a){if(!Array.isArray(a)||!a.length)return'';return`<p>${a.map(renderSegment).join('')}</p>`}
+function renderSegment(x){let t=esc(x.text||'');if(x.bold)t=`<strong>${t}</strong>`;if(x.italic)t=`<em>${t}</em>`;return t}
+function renderChoice(front,back,index){
+  const linked=findBackSections(front,back,index),content=linked.length?linked.map(s=>`<section class="section ${safeType(s.type)}">${renderTranslated(s)}</section>`).join(''):'<p>Não foi possível localizar o texto correspondente no verso.</p>';
+  return`<details class="choice-reference"><summary>${renderTranslatedText(front)}</summary><div class="choice-reference-content">${content}</div></details>`;
+}
+function renderTranslatedText(s){return renderSegments(s.translatedSegments)||esc(s.translated||'')}
+function findBackSections(front,back,index){
+  const sections=Array.isArray(back?.sections)?back.sections:[],key=String(front.linkKey||'').trim().toLowerCase();
+  if(key){const linked=sections.filter(s=>String(s.linkKey||'').trim().toLowerCase()===key);if(linked.length)return linked}
+  const frontText=normalise(front.translated||front.original),textMatch=sections.filter(s=>normalise(`${s.translated||''} ${s.original||''}`).includes(frontText));
+  if(textMatch.length)return textMatch;
+  const backChoices=sections.filter(s=>s.type==='choice');return backChoices[index]?[backChoices[index]]:[];
+}
+function normalise(value){return String(value||'').toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim()}
 function paragraphs(t){return String(t||'').split(/\n+/).filter(Boolean).map(p=>`<p>${esc(p)}</p>`).join('')}
 function safeType(t){return['narrative','dialogue','rules','choice','identifier','other'].includes(t)?t:'other'}
 function setPersistenceStatus(message,type){const el=$('persistence-status');el.textContent=message;el.hidden=!message;el.className=type==='warning'?'persistence-status warning':'persistence-status muted'}
@@ -169,7 +207,7 @@ async function renderRecent(){
   try{recentItems=await historyGetAll()}catch(err){console.warn('Could not load history',err);recentItems=[]}
   $('recent-section').hidden=!recentItems.length;
   $('recent-list').innerHTML=recentItems.map((x,i)=>`<button class="recent-item" data-i="${i}"><strong>${esc(x.title)}</strong><span>${esc(x.cardId||'Carta sem código')}${x.result?.back?' · frente e verso':''}</span></button>`).join('');
-  $('recent-list').querySelectorAll('button').forEach(b=>b.onclick=()=>{currentResult=recentItems[+b.dataset.i].result;$('result-side-tabs').hidden=!currentResult.back;setPersistenceStatus('',null);showResultSide('front');show('result')});
+  $('recent-list').querySelectorAll('button').forEach(b=>b.onclick=()=>{currentResult=recentItems[+b.dataset.i].result;phraseMatches=findPhraseMatches(currentResult);setPersistenceStatus('',null);showResultSide();show('result')});
 }
 
 async function clearHistory(){
