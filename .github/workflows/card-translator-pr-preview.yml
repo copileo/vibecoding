@@ -32,6 +32,8 @@ jobs:
           node --check apps/tradutor-cartas/app.js
           node --check apps/tradutor-cartas/copileo-ai.js
           node --check apps/tradutor-cartas/sw.js
+          node --check apps/tradutor-cartas/linking-word-fix.js
+          node --check apps/tradutor-cartas/phrase-matcher.js
 
       - name: Validate local asset references
         run: |
@@ -105,9 +107,20 @@ jobs:
         run: |
           set -euo pipefail
           PROJECT='vibecoding-card-translator-preview'
-          if ! npx --yes wrangler@4 pages project list --json | jq -e --arg name "$PROJECT" '.[] | select(.name == $name)' >/dev/null; then
-            npx --yes wrangler@4 pages project create "$PROJECT" --production-branch=main
+          LOG_FILE="$(mktemp)"
+
+          if npx --yes wrangler@4 pages project create "$PROJECT" --production-branch=main >"$LOG_FILE" 2>&1; then
+            cat "$LOG_FILE"
+            echo "Created Cloudflare Pages project $PROJECT."
+          elif grep -qi 'already exists' "$LOG_FILE"; then
+            cat "$LOG_FILE"
+            echo "Cloudflare Pages project $PROJECT already exists; continuing."
+          else
+            cat "$LOG_FILE"
+            exit 1
           fi
+
+          rm -f "$LOG_FILE"
 
       - name: Deploy to Cloudflare Pages
         id: deploy
