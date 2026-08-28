@@ -36,11 +36,11 @@ test('does not match a phrase that is only a substring of another word',()=>{
   assert.deepEqual(matches,[]);
 });
 
-test('deduplicates configured phrases',()=>{
+test('deduplicates phrases that normalize to the same value',()=>{
   const matches=findPhraseMatches({front:{sections:[{original:'Visit Boskton Market today.'}]}},[
     'Boskton Market','Boskton Market','boskton market'
   ]);
-  assert.equal(matches.length,3);
+  assert.deepEqual(matches.map(x=>x.phrase),['Boskton Market']);
 });
 
 test('returns no matches for empty or missing OCR text',()=>{
