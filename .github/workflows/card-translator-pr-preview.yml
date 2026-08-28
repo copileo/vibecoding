@@ -105,7 +105,7 @@ jobs:
         run: |
           set -euo pipefail
           PROJECT='vibecoding-card-translator-preview'
-          if ! npx --yes wrangler@4 pages project list --json | jq -e --arg name "$PROJECT" '.[] | select(.name == $name)' >/dev/null; then
+          if ! npx --yes wrangler@4 pages project list --json | jq -e --arg name "$PROJECT" '(.result // .)[] | select(.name == $name)' >/dev/null; then
             npx --yes wrangler@4 pages project create "$PROJECT" --production-branch=main
           fi
 
