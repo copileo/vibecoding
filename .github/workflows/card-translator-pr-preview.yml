@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - main
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, closed]
     paths:
       - 'apps/tradutor-cartas/**'
       - '.github/workflows/card-translator-pr-preview.yml'
@@ -21,6 +21,7 @@ permissions:
 jobs:
   validate:
     name: Validate static app
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR
@@ -89,7 +90,7 @@ jobs:
     name: Deploy PR preview
     needs: validate
     runs-on: ubuntu-latest
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     environment:
       name: card-translator-pr-${{ github.event.pull_request.number }}
       url: https://pr-${{ github.event.pull_request.number }}.vibecoding-card-translator-preview.pages.dev
@@ -158,7 +159,66 @@ jobs:
 
           **${PREVIEW_URL}**
 
-          This stable URL is updated whenever new commits are pushed to this PR.
+          This stable URL is updated whenever new commits are pushed to this PR and is removed when the PR is closed or merged.
+          EOF
+          )
+
+          COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate \
+            --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" | head -n1 || true)
+
+          if [ -n "$COMMENT_ID" ]; then
+            gh api --method PATCH "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" -f body="$BODY" >/dev/null
+          else
+            gh api --method POST "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" -f body="$BODY" >/dev/null
+          fi
+
+  cleanup:
+    name: Remove PR preview
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete Cloudflare Pages deployments for this PR
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          PROJECT='vibecoding-card-translator-preview'
+          BRANCH="pr-${PR_NUMBER}"
+
+          deployments=$(npx --yes wrangler@4 pages deployment list \
+            --project-name "$PROJECT" \
+            --json)
+
+          mapfile -t ids < <(printf '%s' "$deployments" | jq -r --arg branch "$BRANCH" \
+            '.[] | select(.deployment_trigger.metadata.branch == $branch) | .id')
+
+          if [ "${#ids[@]}" -eq 0 ]; then
+            echo "No Cloudflare Pages deployments found for ${BRANCH}."
+            exit 0
+          fi
+
+          for id in "${ids[@]}"; do
+            echo "Deleting deployment ${id} for ${BRANCH}"
+            npx --yes wrangler@4 pages deployment delete "$id" \
+              --project-name "$PROJECT" \
+              --force
+          done
+
+      - name: Update PR preview comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          MARKER='<!-- card-translator-pr-preview -->'
+          BODY=$(cat <<EOF
+          ${MARKER}
+          ### Card Translator preview
+
+          🧹 This PR is closed. Its Cloudflare Pages preview has been removed.
           EOF
           )
 
