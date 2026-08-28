@@ -22,10 +22,15 @@ export function findPhraseMatches(result, phrases){
   const source=normalisePhrase(collectOriginalText(result));
   if(!source)return [];
 
-  return [...new Set((phrases||[]).map(String).map(p=>p.trim()).filter(Boolean))]
+  const seen=new Set();
+  return (phrases||[])
+    .map(String)
+    .map(phrase=>phrase.trim())
+    .filter(Boolean)
     .filter(phrase=>{
       const candidate=normalisePhrase(phrase);
-      if(!candidate)return false;
+      if(!candidate||seen.has(candidate))return false;
+      seen.add(candidate);
       return ` ${source} `.includes(` ${candidate} `);
     })
     .map(phrase=>({phrase,detectedAt:result?.createdAt}));
