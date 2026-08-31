@@ -44,3 +44,10 @@ test('phrase loading has a visible failure status in the result UI', async () =>
   const html = await read('index.html');
   assert.match(html, /id="phrase-list-status"/);
 });
+
+test('back choice headings are not rendered as their own expanded result', async () => {
+  const source = await read('app.js');
+  assert.match(source, /expandBackChoiceSections\(sections,linked\)/);
+  assert.match(source, /section\.type!=='choice'/);
+  assert.match(source, /for\(let i=index\+1;i<sections\.length&&sections\[i\]\.type!=='choice';i\+\+\)/);
+});
