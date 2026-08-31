@@ -2,6 +2,7 @@ import{CopileoAI}from'./copileo-ai.js';
 
 let callNumber=0;
 let frontResult=null;
+let resetTimer=null;
 const original=CopileoAI.prototype.chatWithImage;
 
 CopileoAI.prototype.chatWithImage=async function(request){
@@ -12,8 +13,9 @@ CopileoAI.prototype.chatWithImage=async function(request){
     const response=await original.call(this,next);
     if(callNumber===1){
       try{frontResult=JSON.parse(response?.data?.content||'')}catch{frontResult=null}
+      resetTimer=setTimeout(()=>{callNumber=0;frontResult=null},1000);
     }
-    if(callNumber>=2){callNumber=0;frontResult=null}
+    if(callNumber>=2){clearTimeout(resetTimer);callNumber=0;frontResult=null}
     return response;
-  }catch(error){callNumber=0;frontResult=null;throw error}
+  }catch(error){clearTimeout(resetTimer);callNumber=0;frontResult=null;throw error}
 };
