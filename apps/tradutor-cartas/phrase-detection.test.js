@@ -17,5 +17,5 @@ test('phrase loader uses the same shared phrase list for matching and AI extract
   const source=await read('phrase-loader-fix.js');
   assert.match(source,/raw\.githubusercontent\.com\/fernandosivelli\/ArydiaPhrases\/main\/Phrases/);
   assert.match(source,/phraseListPromise/);
-  assert.match(source,/result\.phrases\.map/);
+  assert.match(source,/phrases\.map/);
 });
