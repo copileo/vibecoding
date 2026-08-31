@@ -1,7 +1,7 @@
 import{CopileoAI,CopileoAIError,StaticTokenCredentialsProvider}from'./copileo-ai.js';
 import{findPhraseMatches}from'./phrase-matcher.js';
 
-const APP_VERSION='0.4.1';
+const APP_VERSION='0.4.4';
 const STORE='vibecode-card-translator-v1';
 const LEGACY_HISTORY='vibecode-card-translator-history-v2';
 const DB_NAME='vibecode-card-translator';
@@ -22,7 +22,7 @@ let configuredPhrases=[];
 let phraseMatches=[];
 let phraseListError=null;
 
-const PROMPT=`Translate the photographed board-game card from English into Brazilian Portuguese for immediate use during gameplay. Preserve exact rules, choices, numbers, codes, reading order and visible emphasis. Return valid JSON only: {"title":{"original":"","translated":""},"cardId":"","side":"","sections":[{"type":"narrative|dialogue|rules|choice|identifier|other","original":"","translated":"","linkKey":"","originalSegments":[{"text":"","bold":false,"italic":false}],"translatedSegments":[{"text":"","bold":false,"italic":false}]}],"warnings":[{"type":"unreadable|uncertain|unknown_symbol","message":""}]}. Use segments when bold or italic formatting is visible. For every front-side choice or option whose result is written on the back, assign a short stable linkKey (for example, "medicine", "cure", "other") to that front section. Assign the exact same linkKey to the matching back-side section. Do not add a separate instruction to see or refer to the back; the choices themselves open their matching back text. Do not invent emphasis, links or unreadable text.`;
+const PROMPT=`Translate the photographed board-game card from English into Brazilian Portuguese for immediate use during gameplay. Preserve exact rules, choices, numbers, codes, reading order and visible emphasis. Return valid JSON only: {"title":{"original":"","translated":""},"cardId":"","side":"","sections":[{"type":"narrative|dialogue|rules|choice|identifier|other","original":"","translated":"","linkKey":"","originalSegments":[{"text":"","bold":false,"italic":false}],"translatedSegments":[{"text":"","bold":false,"italic":false}]}],"warnings":[{"type":"unreadable|uncertain|unknown_symbol","message":""}]}. Use segments when bold or italic formatting is visible. For every front-side choice or option whose result is written on the back, assign a short stable linkKey (for example, "medicine", "cure", "other") to that front section. Assign the exact same linkKey to the matching back-side section. On the back, a choice section is a heading/label for the result that follows it; do not repeat that heading as the result text. The matching back content for a front choice is the content after that back choice heading and before the next choice heading. Do not add a separate instruction to see or refer to the back; the choices themselves open their matching back text. Do not invent emphasis, links or unreadable text.`;
 
 init().catch(showBootError);
 
@@ -104,7 +104,29 @@ function renderSegments(a){if(!Array.isArray(a)||!a.length)return'';return`<p>${
 function renderSegment(x){let t=esc(x.text||'');if(x.bold)t=`<strong>${t}</strong>`;if(x.italic)t=`<em>${t}</em>`;return t}
 function renderChoice(front,back,index){const linked=findBackSections(front,back,index),content=linked.length?linked.map(s=>`<section class="section ${safeType(s.type)}">${renderTranslated(s)}</section>`).join(''):'<p>Não foi possível localizar o texto correspondente no verso.</p>';return`<details class="choice-reference"><summary>${renderTranslatedText(front)}</summary><div class="choice-reference-content">${content}</div></details>`}
 function renderTranslatedText(s){return renderSegments(s.translatedSegments)||esc(s.translated||'')}
-function findBackSections(front,back,index){const sections=Array.isArray(back?.sections)?back.sections:[],key=String(front.linkKey||'').trim().toLowerCase();if(key){const linked=sections.filter(s=>String(s.linkKey||'').trim().toLowerCase()===key);if(linked.length)return linked}const frontText=normalise(front.translated||front.original),textMatch=sections.filter(s=>normalise(`${s.translated||''} ${s.original||''}`).includes(frontText));if(textMatch.length)return textMatch;const backChoices=sections.filter(s=>s.type==='choice');return backChoices[index]?[backChoices[index]]:[]}
+function findBackSections(front,back,index){
+  const sections=Array.isArray(back?.sections)?back.sections:[],key=String(front.linkKey||'').trim().toLowerCase();
+  if(key){const linked=sections.filter(s=>String(s.linkKey||'').trim().toLowerCase()===key);if(linked.length)return expandBackChoiceSections(sections,linked)}
+  const frontText=normalise(front.translated||front.original),textMatch=sections.filter(s=>normalise(`${s.translated||''} ${s.original||''}`).includes(frontText));
+  if(textMatch.length)return expandBackChoiceSections(sections,textMatch);
+  const backChoices=sections.filter(s=>s.type==='choice');
+  return backChoices[index]?expandBackChoiceSections(sections,[backChoices[index]]):[];
+}
+function expandBackChoiceSections(sections,linked){
+  const result=[],seen=new Set();
+  for(const section of linked){
+    const index=sections.indexOf(section);
+    if(index<0)continue;
+    if(section.type!=='choice'){
+      if(!seen.has(index)){seen.add(index);result.push(section)}
+      continue;
+    }
+    for(let i=index+1;i<sections.length&&sections[i].type!=='choice';i++){
+      if(!seen.has(i)){seen.add(i);result.push(sections[i])}
+    }
+  }
+  return result;
+}
 function normalise(value){return String(value||'').toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim()}
 function paragraphs(t){return String(t||'').split(/\n+/).filter(Boolean).map(p=>`<p>${esc(p)}</p>`).join('')}
 function safeType(t){return['narrative','dialogue','rules','choice','identifier','other'].includes(t)?t:'other'}

@@ -2,5 +2,5 @@
   "name":"vibecoding",
   "private":true,
   "type":"module",
-  "scripts":{"test":"node --test apps/tradutor-cartas/phrase-matcher.test.js"}
+  "scripts":{"test":"node --test apps/tradutor-cartas/*.test.js"}
 }

@@ -32,8 +32,11 @@ jobs:
           node --check apps/tradutor-cartas/app.js
           node --check apps/tradutor-cartas/copileo-ai.js
           node --check apps/tradutor-cartas/sw.js
-          node --check apps/tradutor-cartas/linking-word-fix.js
           node --check apps/tradutor-cartas/phrase-matcher.js
+          node --check apps/tradutor-cartas/phrase-loader.js
+          node --check apps/tradutor-cartas/phrase-loader-fix.js
+          node --check apps/tradutor-cartas/camera-picker.js
+          node --check apps/tradutor-cartas/translation-context-fix.js
 
       - name: Validate local asset references
         run: |
@@ -77,6 +80,9 @@ jobs:
           print(f'Validated {len(parser.refs)} asset references.')
           PY
 
+      - name: Run card translator tests
+        run: npm test
+
       - name: Smoke-test static serving
         run: |
           python3 -m http.server 4173 --directory apps/tradutor-cartas >/tmp/card-translator-preview.log 2>&1 &
@@ -108,18 +114,14 @@ jobs:
           set -euo pipefail
           PROJECT='vibecoding-card-translator-preview'
           LOG_FILE="$(mktemp)"
-
           if npx --yes wrangler@4 pages project create "$PROJECT" --production-branch=main >"$LOG_FILE" 2>&1; then
             cat "$LOG_FILE"
-            echo "Created Cloudflare Pages project $PROJECT."
           elif grep -qi 'already exists' "$LOG_FILE"; then
             cat "$LOG_FILE"
-            echo "Cloudflare Pages project $PROJECT already exists; continuing."
           else
             cat "$LOG_FILE"
             exit 1
           fi
-
           rm -f "$LOG_FILE"
 
       - name: Deploy to Cloudflare Pages
@@ -157,7 +159,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
           ALIAS_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url }}
         run: |
           set -euo pipefail
@@ -171,14 +172,9 @@ jobs:
           ✅ Validation passed and the PR preview is available:
 
           **${PREVIEW_URL}**
-
-          This stable URL is updated whenever new commits are pushed to this PR and is removed when the PR is closed or merged.
           EOF
           )
-
-          COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate \
-            --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" | head -n1 || true)
-
+          COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" | head -n1 || true)
           if [ -n "$COMMENT_ID" ]; then
             gh api --method PATCH "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" -f body="$BODY" >/dev/null
           else
@@ -199,24 +195,14 @@ jobs:
           set -euo pipefail
           PROJECT='vibecoding-card-translator-preview'
           BRANCH="pr-${PR_NUMBER}"
-
-          deployments=$(npx --yes wrangler@4 pages deployment list \
-            --project-name "$PROJECT" \
-            --json)
-
-          mapfile -t ids < <(printf '%s' "$deployments" | jq -r --arg branch "$BRANCH" \
-            '.[] | select(.deployment_trigger.metadata.branch == $branch) | .id')
-
+          deployments=$(npx --yes wrangler@4 pages deployment list --project-name "$PROJECT" --json)
+          mapfile -t ids < <(printf '%s' "$deployments" | jq -r --arg branch "$BRANCH" '.[] | select(.deployment_trigger.metadata.branch == $branch) | .id')
           if [ "${#ids[@]}" -eq 0 ]; then
             echo "No Cloudflare Pages deployments found for ${BRANCH}."
             exit 0
           fi
-
           for id in "${ids[@]}"; do
-            echo "Deleting deployment ${id} for ${BRANCH}"
-            npx --yes wrangler@4 pages deployment delete "$id" \
-              --project-name "$PROJECT" \
-              --force
+            npx --yes wrangler@4 pages deployment delete "$id" --project-name "$PROJECT" --force
           done
 
       - name: Update PR preview comment
@@ -234,10 +220,7 @@ jobs:
           🧹 This PR is closed. Its Cloudflare Pages preview has been removed.
           EOF
           )
-
-          COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate \
-            --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" | head -n1 || true)
-
+          COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" | head -n1 || true)
           if [ -n "$COMMENT_ID" ]; then
             gh api --method PATCH "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" -f body="$BODY" >/dev/null
           else
