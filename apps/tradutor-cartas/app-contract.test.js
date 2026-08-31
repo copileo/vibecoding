@@ -17,7 +17,7 @@ test('back capture is camera-only and uses a separate input', async () => {
   assert.match(html, /id="camera-input"[^>]*capture="environment"/);
   assert.match(html, /id="back-input"[^>]*accept="image\/\*"[^>]*capture="environment"/);
   assert.doesNotMatch(html, /id="gallery-input"/);
-  assert.match(html, /src="camera-picker\.js\?v=0\.4\.2"/);
+  assert.match(html, /src="camera-picker\.js\?v=0\.4\.3"/);
 });
 
 test('camera picker keeps front and back photos separate', async () => {
