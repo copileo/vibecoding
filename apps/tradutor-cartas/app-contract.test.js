@@ -51,3 +51,12 @@ test('back choice headings are not rendered as their own expanded result', async
   assert.match(source, /section\.type!=='choice'/);
   assert.match(source, /for\(let i=index\+1;i<sections\.length&&sections\[i\]\.type!=='choice';i\+\+\)/);
 });
+
+test('expanded choice results remove a duplicated choice label', async () => {
+  const source = await read('choice-render-fix.js');
+  assert.match(source, /choice-reference-content/);
+  assert.match(source, /normalise\(first\.textContent\)===choiceText/);
+  assert.match(source, /first\.remove\(\)/);
+  const html = await read('index.html');
+  assert.match(html, /choice-render-fix\.js\?v=0\.4\.4/);
+});
