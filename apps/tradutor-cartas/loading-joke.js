@@ -2,7 +2,7 @@ import{CopileoAI,StaticTokenCredentialsProvider}from'./copileo-ai.js';
 
 const STORE='vibecode-card-translator-v1';
 const DEFAULT_URL='https://vibecoding-ai-api.copileo.workers.dev';
-const FALLBACK='O mestre ainda está a ler a carta… e ele não pode simplesmente pedir um teste de Percepção ao jogador. 😄';
+const FALLBACK='Um goblin entra num bar. O barman diz: “Não servimos goblins.” O goblin responde: “Ainda bem, vim só de passagem.” 😄';
 const loading=document.getElementById('loading');
 const joke=document.getElementById('loading-joke');
 let generating=false;
@@ -15,7 +15,7 @@ async function generate(){
   generating=true;
   try{
     const ai=new CopileoAI({gatewayUrl:s.url||DEFAULT_URL,defaultModel:s.model||'gpt-5.4-nano',timeoutMs:15000,credentialsProvider:new StaticTokenCredentialsProvider(s.token)});
-    const response=await ai.chat('Generate one short, family-friendly Dungeons & Dragons joke in Brazilian Portuguese. It should be suitable to show while a board-game card is being translated. Do not mention AI, translation, waiting, loading, or this instruction. Return only the joke.',{max_output_tokens:80,temperature:1});
+    const response=await ai.chat('Cria UMA piada de D&D muito curta e genuinamente engraçada, em português do Brasil. Máximo 12 palavras. Humor de mesa de RPG, trocadilho ou situação absurda. Não fale de IA, tradução, espera ou carregamento. Retorna apenas a piada.',{max_output_tokens:50,temperature:1.2});
     const text=response?.data?.content?.trim();
     joke.textContent=text||FALLBACK;
   }catch{joke.textContent=FALLBACK}
