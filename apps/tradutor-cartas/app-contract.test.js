@@ -31,7 +31,7 @@ test('result UI uses independent front and back tabs', async () => {
   const html = await read('index.html');
   const source = await read('result-tabs.js');
   assert.match(html, /result-tabs\.js\?v=0\.4\.5/);
-  assert.doesNotMatch(html, /choice-render-fix\.js/);
+  assert.doesNotMatch(html, /choice-render-fix\.js|translation-context-fix\.js/);
   assert.match(source, /data-result-side/);
   assert.match(source, /Frente/);
   assert.match(source, /Verso/);
@@ -39,17 +39,13 @@ test('result UI uses independent front and back tabs', async () => {
   assert.doesNotMatch(source, /details|choice-reference/);
 });
 
-test('fragile DOM linking monkey patch is no longer loaded', async () => {
-  const html = await read('index.html');
-  assert.doesNotMatch(html, /linking-word-fix\.js/);
-  assert.match(html, /translation-context-fix\.js/);
-});
-
-test('front-only translation context is reset before the next card', async () => {
-  const source = await read('translation-context-fix.js');
-  assert.match(source, /resetTimer=setTimeout/);
-  assert.match(source, /clearTimeout\(resetTimer\)/);
-  assert.match(source, /BACK-SIDE CONTEXT/);
+test('front and back use the same independent prompt', async () => {
+  const source = await read('result-tabs.js');
+  assert.match(source, /INDEPENDENT_PROMPT/);
+  assert.match(source, /image:backImage/);
+  assert.match(source, /pendingBack=original\.call/);
+  assert.match(source, /callNumber===2&&pendingBack/);
+  assert.doesNotMatch(source, /BACK-SIDE CONTEXT|FRONT TRANSLATION/);
 });
 
 test('phrase loading has a visible failure status in the result UI', async () => {
