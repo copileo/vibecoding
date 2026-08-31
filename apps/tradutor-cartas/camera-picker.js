@@ -1,37 +1,18 @@
-const state={allow:null};
-
-function openPicker(side){
-  const dialog=document.getElementById('image-source-dialog');
-  if(!dialog)return;
-  dialog.dataset.side=side;
-  dialog.showModal();
-}
-
-function choose(kind){
-  const dialog=document.getElementById('image-source-dialog');
-  const side=dialog?.dataset.side||'front';
-  const input=document.getElementById(kind==='camera'?'camera-input':side==='back'?'back-input':'gallery-input');
-  if(!input)return;
-  state.allow=input;
-  dialog?.close();
-  input.click();
-}
-
+const state={side:'front'};
+function openCamera(side){const input=document.getElementById('camera-input');if(!input)return;state.side=side;input.click()}
 window.addEventListener('DOMContentLoaded',()=>{
-  const camera=document.getElementById('camera-input');
-  const gallery=document.getElementById('gallery-input');
-  const back=document.getElementById('back-input');
-  const dialog=document.getElementById('image-source-dialog');
-  const close=document.getElementById('image-source-cancel');
-  document.getElementById('front-capture')?.addEventListener('click',()=>openPicker('front'));
-  document.getElementById('choose-back')?.addEventListener('click',()=>openPicker('back'));
-  document.getElementById('choose-retake')?.addEventListener('click',()=>openPicker('front'));
-  document.getElementById('image-source-camera')?.addEventListener('click',()=>choose('camera'));
-  document.getElementById('image-source-gallery')?.addEventListener('click',()=>choose('gallery'));
-  close?.addEventListener('click',()=>dialog?.close());
-  [camera,gallery,back].forEach(input=>input?.addEventListener('click',event=>{
-    if(state.allow===input){state.allow=null;return;}
-    event.preventDefault();
-    openPicker(input===back?'back':'front');
-  }));
+ const camera=document.getElementById('camera-input');
+ const back=document.getElementById('back-input');
+ document.getElementById('front-capture')?.addEventListener('click',()=>openCamera('front'));
+ back?.setAttribute('capture','environment');
+ camera?.addEventListener('change',event=>{
+  if(state.side!=='back')return;
+  event.stopImmediatePropagation();
+  const file=camera.files?.[0];
+  if(!file||!back)return;
+  const transfer=new DataTransfer();transfer.items.add(file);back.files=transfer.files;
+  back.dispatchEvent(new Event('change',{bubbles:true}));
+  camera.value='';state.side='front';
+ });
+ camera?.addEventListener('click',()=>{if(state.side!=='back')state.side='front'});
 });
