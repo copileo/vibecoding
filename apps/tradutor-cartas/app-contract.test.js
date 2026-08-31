@@ -27,6 +27,13 @@ test('fragile DOM linking monkey patch is no longer loaded',async()=>{
   assert.match(html,/translation-context-fix\.js/);
 });
 
+test('front-only translation context is reset before the next card',async()=>{
+  const source=await read('translation-context-fix.js');
+  assert.match(source,/resetTimer=setTimeout/);
+  assert.match(source,/clearTimeout\(resetTimer\)/);
+  assert.match(source,/BACK-SIDE CONTEXT/);
+});
+
 test('phrase loading has a visible failure status in the result UI',async()=>{
   const html=await read('index.html');
   assert.match(html,/id="phrase-list-status"/);
