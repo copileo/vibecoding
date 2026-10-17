@@ -12,7 +12,7 @@ test('new building and redstone crafting recipes resolve ingredients',()=>{
 });
 test('crafting grids represent matching ingredient counts when a grid is declared',()=>{
  const symbols={P:'planks',C:'cobblestone',I:'iron_ingot',R:'redstone',S:'stick',T:'redstone_torch',Q:'nether_quartz',D:'glowstone_dust',G:'gold_ingot'};
- const overrides={sticky_piston:{P:'piston',S:'slime_ball'},torch:{C:'coal'},redstone_lamp:{G:'glowstone'},barrel:{S:'wooden_slab'}};
+ const overrides={sticky_piston:{P:'piston',S:'slime_ball'},torch:{C:'coal'},redstone_lamp:{G:'glowstone'},barrel:{S:'wooden_slab'},repeater:{S:'stone'},comparator:{S:'stone'}};
  for(const [id,item] of Object.entries(ITEMS)){
   if(!item.recipe?.shape)continue;
   const map={...symbols,...overrides[id]};
