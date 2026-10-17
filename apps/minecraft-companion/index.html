@@ -31,7 +31,7 @@ function craftingCard(id){
  if(r.shape){
    const codes=[...new Set(r.shape.join(''))].filter(x=>x!==' ');
    const map={P:'planks',C:'cobblestone',I:'iron_ingot',R:'redstone',S:'stick',T:'redstone_torch',Q:'nether_quartz',D:'glowstone_dust',G:'gold_ingot'};
-   const special=id==='redstone_lamp'?{G:'glowstone'}:id==='powered_rail'?{G:'gold_ingot'}:id==='glowstone'?{D:'glowstone_dust'}:id==='barrel'?{S:'wooden_slab'}:{};
+   const special=({redstone_lamp:{G:'glowstone'},powered_rail:{G:'gold_ingot'},glowstone:{D:'glowstone_dust'},barrel:{S:'wooden_slab'},sticky_piston:{P:'piston',S:'slime_ball'},torch:{C:'coal'}})[id]||{};
    const mapping={...map,...special};
    const entries=Object.fromEntries(r.uses);
    const counts={};for(const code of r.shape.join('')){if(code!==' ')counts[code]=(counts[code]||0)+1}
