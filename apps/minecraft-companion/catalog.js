@@ -70,3 +70,23 @@ Object.assign(ITEMS,additional);
 // Correct the barrel ingredient definition to use the newly modeled wooden slab.
 ITEMS.barrel.recipe.uses=[["planks",6],["wooden_slab",2]];
 delete ITEMS.barrel.unresolved;
+
+// Exact 3×3 placements for selected recipes already included in the sample.
+// Each cell is a canonical item id, or null for an empty slot.
+const N=null;
+const grids={
+ bow:[N,"stick","string","stick",N,"string",N,"stick","string"],
+ dispenser:["cobblestone","cobblestone","cobblestone","cobblestone","bow","cobblestone","cobblestone","redstone","cobblestone"],
+ hopper:["iron_ingot",N,"iron_ingot","iron_ingot","chest","iron_ingot",N,"iron_ingot",N],
+ note_block:["planks","planks","planks","planks","redstone","planks","planks","planks","planks"],
+ observer:["cobblestone","cobblestone","cobblestone","redstone","redstone","nether_quartz","cobblestone","cobblestone","cobblestone"],
+ chest:["planks","planks","planks","planks",N,"planks","planks","planks","planks"],
+ stick:[N,"planks",N,N,"planks",N,N,N,N],
+ crafting_table:["planks","planks",N,"planks","planks",N,N,N,N],
+ trapdoor:["planks","planks","planks","planks","planks","planks",N,N,N],
+ ladder:["stick",N,"stick","stick","stick","stick","stick",N,"stick"],
+ fence:["planks","stick","planks","planks","stick","planks",N,N,N],
+ sign:["planks","planks","planks","planks","planks","planks",N,"stick",N],
+ stone_button:["stone",N,N,N,N,N,N,N,N]
+};
+for(const [id,grid] of Object.entries(grids))if(ITEMS[id]?.recipe)ITEMS[id].recipe.grid=grid;
