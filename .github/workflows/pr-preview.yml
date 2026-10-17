@@ -1,0 +1,71 @@
+name: PR Preview · Cloudflare Pages
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-preview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    # No Cloudflare secrets are available to pull requests originating from forks.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: preview
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test app
+        run: npm test
+      - name: Check required configuration
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID secret"; exit 1; }
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN secret"; exit 1; }
+          test -n "$CF_PROJECT" || { echo "::error::Missing CLOUDFLARE_PAGES_PROJECT variable"; exit 1; }
+      - name: Prepare static site
+        run: |
+          mkdir -p "$RUNNER_TEMP/site"
+          tar --exclude=.git --exclude=.github --exclude=node_modules --exclude='*.test.js' -cf - . | tar -xf - -C "$RUNNER_TEMP/site"
+      - name: Publish preview to Cloudflare Pages
+        id: publish
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ -n "$PR_NUMBER" ]; then
+            DEPLOY_BRANCH="pr-$PR_NUMBER"
+          else
+            DEPLOY_BRANCH="manual-$RUN_ID"
+          fi
+          npx --yes wrangler@4 pages deploy "$RUNNER_TEMP/site" --project-name "$CF_PROJECT" --branch "$DEPLOY_BRANCH" 2>&1 | tee "$RUNNER_TEMP/pages-deploy.log"
+          echo "deploy_branch=$DEPLOY_BRANCH" >> "$GITHUB_OUTPUT"
+      - name: Preview information
+        env:
+          PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          DEPLOY_BRANCH: ${{ steps.publish.outputs.deploy_branch }}
+        run: |
+          {
+            echo "### Cloudflare Pages preview"
+            echo ""
+            echo "Branch alias (confirm from Cloudflare deployment output):"
+            echo "\\`https://$DEPLOY_BRANCH.$PROJECT.pages.dev/\\`"
+            echo ""
+            echo "Minecraft Companion: \\`https://$DEPLOY_BRANCH.$PROJECT.pages.dev/apps/minecraft-companion/\\`"
+            echo ""
+            echo "The generated deployment URL printed by Wrangler is authoritative. A branch alias may take time to resolve."
+          } >> "$GITHUB_STEP_SUMMARY"
