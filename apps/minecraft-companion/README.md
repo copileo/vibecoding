@@ -2,7 +2,7 @@
 Static, English-language web app at `apps/minecraft-companion/`. No AI keys or backend.
 
 ## Versioning
-App v0.1.0. The UI **targets Minecraft Java Edition 1.21.10** as a starter fixture; recipe data is **curated, incomplete and not certified as a complete 1.21.10 dataset**. Never treat the version label as proof of full recipe coverage. Next step is to import and pin a complete version-specific dataset and record provenance and asset rights.
+App v0.2.0. The UI **targets Minecraft Java Edition 1.21.10** as a starter fixture; recipe data is **curated, incomplete and not certified as a complete 1.21.10 dataset**. Never treat the version label as proof of full recipe coverage. Next step is to import and pin a complete version-specific dataset and record provenance and asset rights.
 
 ## Features
 - Manual item search, quantity editing, example build, inventory, local storage, JSON import/export.
@@ -24,3 +24,8 @@ From the repo root: `node --test apps/minecraft-companion/*.test.js`. The refere
 - Only same-repository pull requests receive deployment secrets; PRs from forks are skipped. Same-repository contributors can modify workflows that use deployment credentials, so review contributor access.
 - Closing the PR triggers cleanup of deployments on its PR-specific branch.
 - Preview validity still needs confirmation via GitHub Actions; a predicted alias is not proof of deployment.
+
+## v0.2.0 draft: recipe coverage
+This PR expands the manually curated catalog with crafting tables, furnaces, torches, pistons, sticky pistons, droppers, redstone torches, levers, repeaters, comparators, redstone lamps, glowstone, barrels, wooden slabs, rails and powered rails. The recipe explorer now displays an ingredient card, yield and a 3×3 grid when the recipe shape matches the ingredient counts. Automated tests cover the catalog's shaped recipe counts.
+
+**Data caveat:** This is still not a complete or independently version-audited Java Edition recipe database. Multi-recipe choices, variants, and automatic import from minecraft-data remain follow-up work.
