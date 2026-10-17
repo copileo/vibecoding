@@ -15,3 +15,14 @@ Recipe alternatives, colored wood variants, optimal resource routing, exact fuel
 
 ## Test
 From the repo root: `node --test apps/minecraft-companion/*.test.js`. The reference screenshot fixture has 15 line items totaling 74 requested blocks/items.
+## PR preview pipeline
+The repo workflow `.github/workflows/pr-preview.yml` runs `npm test` and uploads a static copy of the repository to Cloudflare Pages on same-repository pull requests.
+
+Required GitHub Actions configuration (repository **or** `preview` environment scope):
+- Secrets: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` (Pages deployment token; use minimum required permissions).
+- Variable: `CLOUDFLARE_PAGES_PROJECT` (name of an **existing** Cloudflare Pages project). It must be available to the `preview` environment job.
+- Create the `preview` GitHub environment if needed; protect it with approvals for untrusted contributors. Same-repo PR branches can run code with access to deployment secrets after environment approval.
+
+A PR numbered N deploys to branch `pr-N`. Inspect the job's Wrangler output for the actual URL; the likely alias is `https://pr-N.<pages-project>.pages.dev/`. The alias is not guaranteed until a successful Cloudflare deployment. Fork PRs cannot deploy with the repository secrets through this workflow.
+
+PR previews remain until removed from Cloudflare Pages; closing a PR currently does not delete deployments.
