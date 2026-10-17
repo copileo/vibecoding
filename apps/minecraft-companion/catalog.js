@@ -39,3 +39,34 @@ lava_source:item("Lava source (fluid)",null,"Find and collect lava; source block
 water_source:item("Water source (fluid)",null,"Find and collect water; source blocks are tracked as fluid requirements.",{fluid:true})
 };
 export const display=id=>ITEMS[id]?.name??id;
+
+// Supplemental Java crafting recipes for common building and redstone components.
+// Shapes are standard 3×3 crafting patterns; null cells are empty. All recipes
+// require a version-specific data audit before being called complete.
+const additional = {
+crafting_table:item("Crafting Table",{out:1,uses:[["planks",4]],shape:["PP ","PP ","   "]},"Craft from four planks."),
+furnace:item("Furnace",{out:1,uses:[["cobblestone",8]],shape:["CCC","C C","CCC"]},"Craft from eight cobblestone."),
+torch:item("Torch",{out:4,uses:[["coal",1],["stick",1]],shape:[" C "," S ","   "]},"Craft from coal and a stick."),
+coal:item("Coal",null,"Mine coal ore, or find coal in loot."),
+piston:item("Piston",{out:1,uses:[["planks",3],["cobblestone",4],["iron_ingot",1],["redstone",1]],shape:["PPP","CIC","CRC"]},"Craft from planks, cobblestone, iron and redstone."),
+sticky_piston:item("Sticky Piston",{out:1,uses:[["piston",1],["slime_ball",1]],shape:[" S "," P ","   "]},"Craft using a piston and slime ball."),
+slime_ball:item("Slimeball",null,"Dropped by slimes; also obtainable by other game mechanics."),
+dropper:item("Dropper",{out:1,uses:[["cobblestone",7],["redstone",1]],shape:["CCC","C C","CRC"]},"Craft from cobblestone and redstone."),
+redstone_torch:item("Redstone Torch",{out:1,uses:[["redstone",1],["stick",1]],shape:[" R "," S ","   "]},"Craft from redstone dust and a stick."),
+lever:item("Lever",{out:1,uses:[["stick",1],["cobblestone",1]],shape:[" S "," C ","   "]},"Craft from a stick and cobblestone."),
+repeater:item("Redstone Repeater",{out:1,uses:[["redstone_torch",2],["redstone",1],["stone",3]],shape:["   ","TRT","SSS"]},"Craft with redstone torches, redstone and stone."),
+comparator:item("Redstone Comparator",{out:1,uses:[["redstone_torch",3],["nether_quartz",1],["stone",3]],shape:[" T ","TQT","SSS"]},"Craft using Nether quartz, redstone torches and stone."),
+redstone_lamp:item("Redstone Lamp",{out:1,uses:[["glowstone",1],["redstone",4]],shape:[" R ","RGR"," R "]},"Craft using a glowstone block and redstone."),
+glowstone:item("Glowstone",{out:1,uses:[["glowstone_dust",4]],shape:["DD ","DD ","   "]},"Craft glowstone dust into a block."),
+glowstone_dust:item("Glowstone Dust",null,"Break glowstone in the Nether or obtain from other sources."),
+barrel:item("Barrel",{out:1,uses:[["planks",6],["slab",2]],shape:["PSP","P P","PSP"]},"Craft using six planks and two wooden slabs; the starter slab item is stone, so this recipe requires a separate wooden slab.",{unresolved:true}),
+wooden_slab:item("Oak Slab",{out:6,uses:[["planks",3]],shape:["   ","   ","PPP"]},"Craft wooden slabs from matching planks."),
+rail:item("Rail",{out:16,uses:[["iron_ingot",6],["stick",1]],shape:["I I","ISI","I I"]},"Craft rails from iron ingots and a stick."),
+powered_rail:item("Powered Rail",{out:6,uses:[["gold_ingot",6],["stick",1],["redstone",1]],shape:["G G","GSG","GRG"]},"Craft powered rails using gold, stick and redstone."),
+gold_ingot:item("Gold Ingot",{out:1,uses:[["raw_gold",1]],station:"Furnace",fuel:true},"Smelt raw gold."),
+raw_gold:item("Raw Gold",null,"Mine gold ore with an iron-tier or better pickaxe.")
+};
+Object.assign(ITEMS,additional);
+// Correct the barrel ingredient definition to use the newly modeled wooden slab.
+ITEMS.barrel.recipe.uses=[["planks",6],["wooden_slab",2]];
+delete ITEMS.barrel.unresolved;
