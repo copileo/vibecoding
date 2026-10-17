@@ -26,3 +26,12 @@ test('crafting grids represent matching ingredient counts when a grid is declare
 test('powered rail has six outputs per craft',()=>{
  const t=expandTree('powered_rail',7,ITEMS);assert.equal(t.batches,2);
 });
+
+test('reference crafting grids have nine cells and matching ingredients',()=>{
+ for(const [id,item] of Object.entries(ITEMS)){
+  const r=item.recipe;if(!r?.grid)continue;
+  assert.equal(r.grid.length,9,id+' must have nine slots');
+  const counts={};for(const ingredient of r.grid)if(ingredient)counts[ingredient]=(counts[ingredient]||0)+1;
+  assert.deepEqual(counts,Object.fromEntries(r.uses),id+' grid ingredients must match the recipe');
+ }
+});
